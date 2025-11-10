@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fahrer Einsatzplaner - Schichten</title>
+    <!-- Tailwind CSS laden -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Angepasstes Styling für besseres Aussehen und größere Eingabefelder */
+        :root {
+            --primary-color: #0d9488; /* Teal-700 */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .card {
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 1.5rem;
+        }
+        /* Custom Class für größere Zeitfelder */
+        .form-input-lg {
+            font-size: 1.25rem; /* text-xl */
+            padding: 0.75rem 1rem;
+            height: auto;
+        }
+        .btn-primary {
+            transition: all 0.15s ease-in-out;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #0f766e; /* Teal-800 */
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Mobile Anpassung: Sicherstellen, dass die Tabelle auf kleinen Bildschirmen scrollbar ist */
+        #overview-container {
+            overflow-x: auto;
+        }
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            background-color: white;
+            box-shadow: 2px 0 3px -2px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <!-- Lade-Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="spinner"></div>
+        <p class="ml-3 text-white">Wird gespeichert und geladen...</p>
+    </div>
+
+    <div class="max-w-7xl mx-auto space-y-8">
+        <header class="text-center">
+            <h1 class="text-4xl font-extrabold text-gray-900 mb-2">Fahrer Einsatzplaner</h1>
+            <p class="text-gray-600">Planung von Schichten über die zentrale Einsatzübersicht.</p>
+            <div id="user-info" class="text-sm mt-2 text-gray-500">Authentifizierung läuft...</div>
+        </header>
+
+        <!-- Modaler Dialog für Fehlermeldungen / Bestätigungen -->
+        <div id="alert-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-40">
+            <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full">
+                <h3 id="alert-title" class="text-lg font-bold mb-4">Meldung</h3>
+                <p id="alert-message" class="text-gray-700 mb-6"></p>
+                <div class="flex justify-end space-x-3">
+                    <button id="alert-cancel-btn" class="hidden px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">Abbrechen</button>
+                    <button id="alert-confirm-btn" class="px-4 py-2 btn-primary font-semibold rounded-lg">OK</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modaler Dialog für Bearbeitung -->
+        <div id="edit-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-40">
+            <div class="bg-white p-6 rounded-xl shadow-2xl max-w-lg w-full">
+                <h3 class="text-xl font-bold text-teal-700 mb-6">Schicht bearbeiten</h3>
+                <input type="hidden" id="edit-shift-id">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="edit-driver" class="block text-sm font-medium text-gray-700">Fahrer</label>
+                        <input type="text" id="edit-driver" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500">
+                    </div>
+                    <div>
+                        <label for="edit-date" class="block text-sm font-medium text-gray-700">Datum</label>
+                        <input type="date" id="edit-date" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500">
+                    </div>
+                    <div>
+                        <label for="edit-start-time" class="block text-sm font-medium text-gray-700">Startzeit</label>
+                        <input type="time" id="edit-start-time" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500 form-input-lg">
+                    </div>
+                    <div>
+                        <label for="edit-end-time" class="block text-sm font-medium text-gray-700">Endzeit</label>
+                        <input type="time" id="edit-end-time" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500 form-input-lg">
+                    </div>
+                </div>
+
+                <label for="edit-description" class="block text-sm font-medium text-gray-700 mb-2">Beschreibung (optional)</label>
+                <textarea id="edit-description" rows="2" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500"></textarea>
+
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button onclick="hideEditModal()" class="px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">Abbrechen</button>
+                    <button onclick="saveEditedShift()" class="px-4 py-2 btn-primary font-semibold rounded-lg">Speichern</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fahrer hinzufügen Sektion -->
+        <div class="card">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">🧍 Fahrer hinzufügen</h2>
+            <div class="flex flex-col sm:flex-row gap-4 items-end">
+                <div class="flex-grow">
+                     <label for="new-driver-name-input" class="block text-sm font-medium text-gray-700">Name des Fahrers (wird automatisch zur Liste hinzugefügt)</label>
+                    <input 
+                        type="text" 
+                        id="new-driver-name-input" 
+                        placeholder="Name des Fahrers" 
+                        class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                    />
+                </div>
+                
+                <button 
+                    onclick="addDriver()" 
+                    class="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-150 transform hover:scale-[1.02]"
+                >
+                    Fahrer hinzufügen
+                </button>
+            </div>
+        </div>
+
+        <!-- Schicht Anlegen Sektion (Batch-Erstellung) -->
+        <div class="card">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">📅 Schicht anlegen & Fahrer zuweisen</h2>
+            <p class="text-sm text-gray-500 mb-4">Fügen Sie mehrere Schichten zur Liste hinzu, bevor Sie diese gesammelt anlegen.</p>
+
+            <!-- Eingabefelder -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <!-- Fahrer Dropdown (Gespeicherte Namen) -->
+                <div>
+                    <label for="driver-select" class="block text-sm font-medium text-gray-700">Fahrer auswählen</label>
+                    <select 
+                        id="driver-select" 
+                        class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500 bg-white"
+                        aria-label="Fahrer auswählen"
+                    >
+                        <option value="" disabled selected>Fahrer auswählen...</option>
+                    </select>
+                </div>
+
+                <!-- Datum auswählen -->
+                <div>
+                    <label for="shift-date-select" class="block text-sm font-medium text-gray-700">Datum</label>
+                    <input type="date" id="shift-date-select" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500" value="">
+                </div>
+                
+                <!-- Startzeit (Größer) -->
+                <div>
+                    <label for="start-time" class="block text-sm font-medium text-gray-700">Startzeit</label>
+                    <input type="time" id="start-time" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm form-input-lg focus:ring-teal-500 focus:border-teal-500">
+                </div>
+
+                <!-- Endzeit (Größer) -->
+                <div>
+                    <label for="end-time" class="block text-sm font-medium text-gray-700">Endzeit</label>
+                    <input type="time" id="end-time" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm form-input-lg focus:ring-teal-500 focus:border-teal-500">
+                </div>
+            </div>
+
+            <!-- Beschreibung und Hinzufügen Button -->
+            <div class="flex flex-col md:flex-row gap-4 mb-6 items-end">
+                <div class="flex-grow">
+                    <label for="shift-description" class="block text-sm font-medium text-gray-700">Beschreibung (optional)</label>
+                    <input type="text" id="shift-description" placeholder="Z.B. Frühe Schicht, Auslieferung A" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500">
+                </div>
+                <button id="add-shift-btn" onclick="addPendingShift()" class="flex-shrink-0 w-full md:w-auto px-6 py-3 bg-teal-500 text-white font-bold rounded-lg hover:bg-teal-600 transition duration-150 shadow-md">
+                    <span class="text-xl">+ Schicht hinzufügen</span>
+                </button>
+            </div>
+
+            <!-- Liste der gesammelten Schichten (Pending Shifts) -->
+            <div id="pending-shifts-container" class="mb-6 space-y-2 border-t pt-4 hidden">
+                <h3 class="text-lg font-semibold text-gray-700">Zu erstellende Schichten:</h3>
+                <ul id="pending-shifts-list" class="space-y-2">
+                    <!-- Pending shifts will be injected here -->
+                </ul>
+            </div>
+
+            <!-- Haupt-Button zum Anlegen (Breiter und unter den Feldern) -->
+            <button id="submit-shift-btn" onclick="submitPendingShifts()" class="w-full btn-primary text-xl font-extrabold py-4 rounded-xl shadow-lg mt-6" disabled>
+                Schicht(en) anlegen
+            </button>
+        </div>
+
+        
+        <!-- Einsatzübersicht Sektion (Listenansicht mit Bearbeiten/Löschen) -->
+        <div class="card mt-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">📅 Einsatzübersicht (Bearbeitbar & Löschbar)</h2>
+
+            <div id="overview-container" class="overflow-x-auto relative">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky-col">Fahrer</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Datum</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start - Ende</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Beschreibung</th>
+                            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="shifts-table-body" class="bg-white divide-y divide-gray-200">
+                        <tr><td colspan="5" class="p-4 text-center text-gray-500">Lade Schichten...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p id="no-shifts-message" class="p-4 text-center text-gray-500 hidden">Keine Schichten geplant.</p>
+        </div>
+
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, serverTimestamp, setLogLevel, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- KONSTANTEN & STATE ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db;
+        let auth;
+        let userId = null;
+        let isAuthReady = false;
+        let pendingShifts = [];
+        let drivers = []; // Für das Fahrer-Dropdown
+
+        // --- DOM-ELEMENTE ---
+        const newDriverInput = document.getElementById('new-driver-name-input');
+        const driverSelect = document.getElementById('driver-select');
+        const shiftDateInput = document.getElementById('shift-date-select');
+        const startTimeInput = document.getElementById('start-time');
+        const endTimeInput = document.getElementById('end-time');
+        const descriptionInput = document.getElementById('shift-description');
+        const pendingShiftsList = document.getElementById('pending-shifts-list');
+        const pendingShiftsContainer = document.getElementById('pending-shifts-container');
+        const submitBtn = document.getElementById('submit-shift-btn');
+        const shiftsTableBody = document.getElementById('shifts-table-body');
+        const noShiftsMessage = document.getElementById('no-shifts-message');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const alertModal = document.getElementById('alert-modal');
+        const alertTitle = document.getElementById('alert-title');
+        const alertMessage = document.getElementById('alert-message');
+        const alertConfirmBtn = document.getElementById('alert-confirm-btn');
+        const alertCancelBtn = document.getElementById('alert-cancel-btn');
+        const editModal = document.getElementById('edit-modal');
+        
+        // --- FIREBASE INITIALISIERUNG ---
+        if (firebaseConfig) {
+            setLogLevel('Debug');
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            loadingOverlay.classList.remove('hidden');
+
+            // Setzt das heutige Datum als Standard
+            shiftDateInput.value = new Date().toISOString().substring(0, 10);
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                } else {
+                    try {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                        userId = auth.currentUser.uid;
+                    } catch (error) {
+                        console.error("Firebase Auth Fehler:", error);
+                        showAlert('Fehler', 'Fehler bei der Anmeldung: ' + error.message);
+                        userId = crypto.randomUUID(); // Fallback ID
+                    }
+                }
+                document.getElementById('user-info').textContent = `Angemeldet als: ${userId}`;
+                isAuthReady = true;
+                // Nach der Authentifizierung starten wir beide Listener
+                await loadDrivers();
+                listenForShifts();
+                loadingOverlay.classList.add('hidden');
+            });
+        } else {
+            showAlert('Fehler', "Firebase Konfiguration fehlt.");
+            shiftsTableBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-red-500">Firebase nicht konfiguriert.</td></tr>';
+        }
+
+        // --- DATENBANK PFAD HILFSFUNKTIONEN ---
+        function getCollectionRef(collectionName) {
+            if (!db || !userId) {
+                console.error("Datenbank oder Benutzer-ID nicht verfügbar.");
+                return null;
+            }
+            // Nutzung des öffentlichen Pfades für Schichten und Fahrer
+            return collection(db, `artifacts/${appId}/public/data/${collectionName}`);
+        }
+
+        // --- MODAL/ALERT HILFSFUNKTIONEN ---
+        function showAlert(title, message, isConfirm = false, onConfirm = () => {}) {
+            alertTitle.textContent = title;
+            alertMessage.innerHTML = message;
+
+            alertCancelBtn.classList.add('hidden');
+            alertConfirmBtn.textContent = 'OK';
+            alertConfirmBtn.onclick = () => alertModal.classList.add('hidden');
+
+            if (isConfirm) {
+                alertTitle.classList.add('text-red-600');
+                alertConfirmBtn.textContent = 'Bestätigen';
+                alertCancelBtn.classList.remove('hidden');
+                alertCancelBtn.onclick = () => alertModal.classList.add('hidden');
+                alertConfirmBtn.onclick = () => {
+                    alertModal.classList.add('hidden');
+                    onConfirm();
+                };
+            } else {
+                alertTitle.classList.remove('text-red-600');
+            }
+
+            alertModal.classList.remove('hidden');
+        }
+
+        function hideEditModal() {
+            editModal.classList.add('hidden');
+        }
+
+        // --- FAHRER LOGIK (mit Firestore) ---
+
+        async function loadDrivers() {
+            if (!isAuthReady) return;
+            const colRef = getCollectionRef('drivers');
+            if (!colRef) return;
+
+            try {
+                const snapshot = await getDocs(colRef);
+                drivers = [];
+                snapshot.forEach(doc => drivers.push(doc.data().name));
+                populateDriverDropdown();
+            } catch (e) {
+                console.error("Fehler beim Laden der Fahrer:", e);
+            }
+        }
+
+        function populateDriverDropdown() {
+            driverSelect.innerHTML = '<option value="" disabled selected>Fahrer auswählen...</option>';
+            if (drivers.length > 0) {
+                drivers.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    driverSelect.appendChild(option);
+                });
+                driverSelect.disabled = false;
+            } else {
+                driverSelect.disabled = true;
+            }
+        }
+
+        window.addDriver = async function() {
+            const name = newDriverInput.value.trim();
+            if (!name) {
+                showAlert('Fehler', 'Bitte geben Sie einen Namen ein.');
+                return;
+            }
+
+            if (drivers.includes(name)) {
+                showAlert('Info', `Fahrer ${name} ist bereits eingetragen.`);
+                return;
+            }
+
+            loadingOverlay.classList.remove('hidden');
+            const colRef = getCollectionRef('drivers');
+            if (!colRef) {
+                loadingOverlay.classList.add('hidden');
+                return;
+            }
+
+            try {
+                // Fügt den Fahrer-Namen als Dokument hinzu (zum Abruf durch loadDrivers)
+                await setDoc(doc(colRef, name.toLowerCase().replace(/\s/g, '_')), {
+                    name: name,
+                    timestamp: serverTimestamp()
+                });
+                
+                // Fügt den Fahrer sofort zum lokalen Array hinzu, um das Dropdown zu aktualisieren
+                drivers.push(name);
+                drivers.sort();
+                populateDriverDropdown();
+
+                newDriverInput.value = '';
+                showAlert('Erfolg', `Fahrer ${name} hinzugefügt.`);
+            } catch (e) {
+                console.error("Fehler beim Hinzufügen des Fahrers: ", e);
+                showAlert('Fehler', "Fehler beim Speichern des Fahrers: " + e.message);
+            } finally {
+                loadingOverlay.classList.add('hidden');
+            }
+        }
+        
+        // --- SCHICHT ANLEGEN LOGIK (Batch-Erstellung) ---
+
+        window.addPendingShift = function() {
+            const driver = driverSelect.value;
+            const driverName = driverSelect.options[driverSelect.selectedIndex].text; // Hol den angezeigten Namen
+            const date = shiftDateInput.value;
+            const startTime = startTimeInput.value;
+            const endTime = endTimeInput.value;
+            const description = descriptionInput.value.trim();
+
+            if (!driver || !date || !startTime || !endTime) {
+                showAlert('Fehler', "Bitte wählen Sie einen Fahrer und geben Sie Datum, Startzeit und Endzeit ein.");
+                return;
+            }
+
+            const newShift = { driver: driverName, date, startTime, endTime, description };
+            pendingShifts.push(newShift);
+            updatePendingList();
+
+            // Nur die Zeitfelder und Beschreibung zurücksetzen (für weitere Termine des gleichen Fahrers)
+            startTimeInput.value = '';
+            endTimeInput.value = '';
+            descriptionInput.value = '';
+            startTimeInput.focus();
+        }
+
+        function updatePendingList() {
+            pendingShiftsList.innerHTML = '';
+            if (pendingShifts.length === 0) {
+                pendingShiftsContainer.classList.add('hidden');
+                submitBtn.disabled = true;
+                return;
+            }
+
+            pendingShiftsContainer.classList.remove('hidden');
+            submitBtn.disabled = false;
+
+            pendingShifts.forEach((shift, index) => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-3 bg-gray-50 border border-gray-200 rounded-lg';
+                li.innerHTML = `
+                    <span class="text-sm font-medium text-gray-800">
+                        ${shift.driver} am ${shift.date} von ${shift.startTime} bis ${shift.endTime}
+                        ${shift.description ? ` (${shift.description})` : ''}
+                    </span>
+                    <button onclick="removePendingShift(${index})" class="text-red-500 hover:text-red-700 ml-4 font-bold">
+                        &times;
+                    </button>
+                `;
+                pendingShiftsList.appendChild(li);
+            });
+        }
+
+        window.removePendingShift = function(index) {
+            pendingShifts.splice(index, 1);
+            updatePendingList();
+        }
+
+        function resetForm() {
+            // Setzt alle Schichtfelder zurück
+            driverSelect.value = '';
+            shiftDateInput.value = new Date().toISOString().substring(0, 10);
+            startTimeInput.value = '';
+            endTimeInput.value = '';
+            descriptionInput.value = '';
+            pendingShifts = [];
+            updatePendingList();
+        }
+
+
+        window.submitPendingShifts = async function() {
+            if (pendingShifts.length === 0) {
+                showAlert('Info', "Es sind keine Schichten zum Anlegen vorhanden.");
+                return;
+            }
+
+            loadingOverlay.classList.remove('hidden');
+            const colRef = getCollectionRef('shifts');
+            if (!colRef) {
+                loadingOverlay.classList.add('hidden');
+                return;
+            }
+
+            try {
+                for (const shift of pendingShifts) {
+                    await addDoc(colRef, {
+                        ...shift,
+                        timestamp: serverTimestamp(),
+                    });
+                }
+                resetForm();
+                showAlert('Erfolg', `${pendingShifts.length} Schicht(en) erfolgreich angelegt.`);
+
+            } catch (e) {
+                console.error("Fehler beim Anlegen der Schicht(en): ", e);
+                showAlert('Fehler', "Fehler beim Speichern in der Datenbank: " + e.message);
+            } finally {
+                loadingOverlay.classList.add('hidden');
+            }
+        }
+
+        // --- EINSATZÜBERSICHT LOGIK (LISTEN-ANSICHT) ---
+
+        function listenForShifts() {
+            if (!isAuthReady || !db) return;
+
+            const colRef = getCollectionRef('shifts');
+            if (!colRef) return;
+
+            const q = query(colRef);
+
+            onSnapshot(q, (snapshot) => {
+                const shifts = [];
+                snapshot.forEach(doc => {
+                    shifts.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Sortierung in JavaScript: Zuerst nach Datum, dann nach Startzeit
+                shifts.sort((a, b) => {
+                    const dateA = new Date(`${a.date}T${a.startTime}`);
+                    const dateB = new Date(`${b.date}T${b.startTime}`);
+                    return dateA - dateB;
+                });
+
+                renderShifts(shifts);
+            }, (error) => {
+                console.error("Fehler beim Abrufen der Schichten: ", error);
+                showAlert('Fehler', "Fehler beim Laden der Schichtdaten: " + error.message);
+            });
+        }
+
+        function renderShifts(shifts) {
+            shiftsTableBody.innerHTML = '';
+            if (shifts.length === 0) {
+                noShiftsMessage.classList.remove('hidden');
+                return;
+            }
+            noShiftsMessage.classList.add('hidden');
+
+            shifts.forEach(shift => {
+                const row = shiftsTableBody.insertRow();
+                row.className = 'hover:bg-gray-100 transition duration-150';
+
+                // Fahrer (Sticky Column)
+                row.insertCell().innerHTML = `<div class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 sticky-col">${shift.driver || 'N/A'}</div>`;
+
+                // Datum
+                row.insertCell().textContent = shift.date ? new Date(shift.date).toLocaleDateString('de-DE') : 'N/A';
+                
+                // Start - Ende Zeit
+                row.insertCell().textContent = `${shift.startTime || '--'} - ${shift.endTime || '--'}`;
+
+                // Beschreibung (optional)
+                const descCell = row.insertCell();
+                descCell.className = 'px-6 py-4 text-sm text-gray-500 hidden md:table-cell truncate max-w-xs';
+                descCell.textContent = shift.description || '-';
+
+                // Aktionen
+                const actionsCell = row.insertCell();
+                actionsCell.className = 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium';
+                actionsCell.innerHTML = `
+                    <button onclick="openEditModal('${shift.id}', '${shift.driver}', '${shift.date}', '${shift.startTime}', '${shift.endTime}', \`${shift.description || ''}\`)"
+                            class="text-teal-600 hover:text-teal-900 font-semibold mr-3">
+                        Bearbeiten
+                    </button>
+                    <button onclick="confirmAndDelete('${shift.id}', '${shift.driver}', '${shift.date}')"
+                            class="text-red-600 hover:text-red-900 font-semibold">
+                        Löschen
+                    </button>
+                `;
+            });
+        }
+        
+        // --- BEARBEITEN / LÖSCHEN FUNKTIONEN ---
+
+        window.openEditModal = function(id, driver, date, start, end, description) {
+            document.getElementById('edit-shift-id').value = id;
+            document.getElementById('edit-driver').value = driver;
+            document.getElementById('edit-date').value = date;
+            document.getElementById('edit-start-time').value = start;
+            document.getElementById('edit-end-time').value = end;
+            // Wichtig: description ist ein String, der escaped werden muss, wenn er aus dem HTML-Attribut kommt
+            document.getElementById('edit-description').value = description.trim(); 
+
+            editModal.classList.remove('hidden');
+        }
+
+        window.saveEditedShift = async function() {
+            const id = document.getElementById('edit-shift-id').value;
+            const newDriver = document.getElementById('edit-driver').value.trim();
+            const newDate = document.getElementById('edit-date').value;
+            const newStart = document.getElementById('edit-start-time').value;
+            const newEnd = document.getElementById('edit-end-time').value;
+            const newDescription = document.getElementById('edit-description').value.trim();
+
+            if (!newDriver || !newDate || !newStart || !newEnd) {
+                hideEditModal();
+                showAlert('Fehler', "Bitte füllen Sie alle Pflichtfelder aus (Fahrer, Datum, Start-/Endzeit).");
+                return;
+            }
+
+            loadingOverlay.classList.remove('hidden');
+            hideEditModal();
+            const colRef = getCollectionRef('shifts');
+            if (!colRef) {
+                loadingOverlay.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const shiftRef = doc(colRef, id);
+                await updateDoc(shiftRef, {
+                    driver: newDriver,
+                    date: newDate,
+                    startTime: newStart,
+                    endTime: newEnd,
+                    description: newDescription,
+                });
+            } catch (e) {
+                console.error("Fehler beim Speichern der Bearbeitung: ", e);
+                showAlert('Fehler', "Fehler beim Aktualisieren der Schicht: " + e.message);
+            } finally {
+                loadingOverlay.classList.add('hidden');
+            }
+        }
+
+        window.confirmAndDelete = function(id, driverName, date) {
+            showAlert(
+                'Löschen bestätigen',
+                `Sind Sie sicher, dass Sie die Schicht für <strong>${driverName}</strong> am ${new Date(date).toLocaleDateString('de-DE')} unwiderruflich löschen möchten?`,
+                true, // isConfirm = true
+                () => deleteShift(id) // onConfirm callback
+            );
+        }
+
+        async function deleteShift(id) {
+            loadingOverlay.classList.remove('hidden');
+            const colRef = getCollectionRef('shifts');
+            if (!colRef) {
+                loadingOverlay.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const shiftRef = doc(colRef, id);
+                await deleteDoc(shiftRef);
+            } catch (e) {
+                console.error("Fehler beim Löschen der Schicht: ", e);
+                showAlert('Fehler', "Fehler beim Löschen der Schicht: " + e.message);
+            } finally {
+                loadingOverlay.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
