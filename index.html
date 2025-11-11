@@ -318,10 +318,10 @@
         };
         let pendingShifts = [];
 
-        // Array von vordefinierten, nur zukünftigen Terminen (Heute ist der 11. Nov 2025)
         const specialDates = [
             
-            // Nov 2025 Planning Weekends 
+            
+            // Nov 2025 Planning Weekends (Text auf "S/N" aktualisiert)
             { date: '2025-11-21', label: '21. November (S/N)' }, 
             { date: '2025-11-22', label: '22. November 2025 (S/N)' }, 
             { date: '2025-11-23', label: '23. November 2025 (S/N)', isGroupSeparator: true },
@@ -329,12 +329,13 @@
             { date: '2025-11-29', label: '29. November 2025 (S/N)' }, 
             { date: '2025-11-30', label: '30. November 2025 (S/N)', isGroupSeparator: true },
             
-            // Weihnachten / Silvester 2025
+            // Weihnachten / Silvester 2025 / Heilige Drei Könige 2026
             { date: '2025-12-24', label: '24. Dezember 2025 (Heiligabend)' }, 
             { date: '2025-12-25', label: '25. Dezember 2025 (1. Weihnachtstag)' },
             { date: '2025-12-26', label: '26. Dezember 2025 (2. Weihnachtstag)' },
-            { date: '2025-12-31', label: '31. Dezember 2025 (Silvester)', isGroupSeparator: true }, 
-            { date: '2026-01-01', label: '01. Januar 2026 (Neujahr)', isGroupSeparator: true }, 
+            { date: '2025-12-31', label: '31. Dezember 2025 (Silvester)' }, 
+            { date: '2026-01-01', label: '01. Januar 2026 (Neujahr)' }, 
+            { date: '2026-01-06', label: '06. Januar 2026 (Heilige Drei Könige/Feiertag ST)', isGroupSeparator: true }, // NEU: 6. Januar 2026
 
                       
             // Frühling 2026 (Bewegliche Feiertage basierend auf Ostern 2026)
@@ -349,7 +350,7 @@
             { date: '2026-10-31', label: '31. Oktober 2026 (Reformationstag)', isGroupSeparator: true },
 
             
-            // Zusätzliche Planungstage 2026 
+            // Zusätzliche Planungstage 2026 (Wochenenden und Vorfeiertage) (Text auf "S/N" aktualisiert)
             { date: '2026-11-20', label: '20. November 2026 (S/N)' }, 
             { date: '2026-11-21', label: '21. November 2026 (S/N)' }, 
             { date: '2026-11-22', label: '22. November 2026 (S/N)', isGroupSeparator: true },
@@ -357,12 +358,13 @@
             { date: '2026-11-28', label: '28. November 2026 (S/N)' }, 
             { date: '2026-11-29', label: '29. November 2026 (S/N)', isGroupSeparator: true },
 
-            // Weihnachten / Silvester 2026 
+            // Weihnachten / Silvester 2026 / Heilige Drei Könige 2027
             { date: '2026-12-24', label: '24. Dezember 2026 (Heiligabend)' },
             { date: '2026-12-25', label: '25. Dezember 2026 (1.Weihnachtstag)' },
             { date: '2026-12-26', label: '26. Dezember 2026 (2.Weihnachtstag)' },
             { date: '2026-12-31', label: '31. Dezember 2026 (Silvester)' },
-            { date: '2027-01-01', label: '01. Januar 2027 (Neujahr)', isGroupSeparator: true },
+            { date: '2027-01-01', label: '01. Januar 2027 (Neujahr)' },
+            { date: '2027-01-06', label: '06. Januar 2027 (Heilige Drei Könige/Feiertag ST)', isGroupSeparator: true }, // NEU: 6. Januar 2027
         ];
         
         // --- DOM-ELEMENTE ---
@@ -893,4 +895,5 @@
     </script>
 </body>
 </html>
+
 
