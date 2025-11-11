@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Einsatzplaner-Feiertage</title>
-    <!-- Tailwind CSS laden -->
+    <title>Fahrer Einsatzplaner - Schichten (Lokal)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Angepasstes Styling für besseres Aussehen und größere Eingabefelder */
@@ -49,17 +48,84 @@
             background-color: white;
             box-shadow: 2px 0 3px -2px rgba(0, 0, 0, 0.1);
         }
+        
+        /* --- Druck-Optimierung (@media print) --- */
+        @media print {
+            /* 1. Unnötige Elemente ausblenden */
+            header, 
+            .card:not(:last-child), /* Blendet alle "card"-Container aus, außer der letzten (Einsatzübersicht) */
+            #edit-modal, 
+            #alert-modal, 
+            .btn-primary,
+            #submit-shift-btn,
+            #add-shift-btn,
+            .px-6.py-4.whitespace-nowrap:last-child, /* Aktionen-Spalte (Löschen/Bearbeiten) */
+            .px-6.py-3:last-child, /* Aktionen-Spaltenüberschrift */
+            .print\:hidden /* Der neue Druck-Button */
+            {
+                display: none !important;
+            }
+
+            /* 2. Allgemeine Layout-Optimierung */
+            body {
+                background-color: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                font-size: 10pt;
+            }
+
+            .card {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            
+            /* 3. Tabellen-Optimierung */
+            #overview-container {
+                overflow-x: visible !important; /* Kein Scrollen beim Drucken */
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+
+            th, td {
+                padding: 4px 8px; /* Reduzierter Abstand für mehr Inhalt */
+                border: 1px solid #ccc; /* Klare Linien für die Tabelle */
+            }
+
+            .sticky-col {
+                position: static !important; /* Sticky-Funktion im Druck aufheben */
+                box-shadow: none !important;
+            }
+
+            /* 4. Titel hinzufügen, da Header fehlt */
+            .card:last-child h2 {
+                font-size: 18pt;
+                text-align: center;
+                margin-bottom: 10px;
+                padding-bottom: 5px;
+                border-bottom: 2px solid #000;
+            }
+
+            /* 5. Fußzeile für Druckdatum */
+            @page {
+                size: A4;
+                margin: 1cm;
+            }
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
 
     <div class="max-w-7xl mx-auto space-y-8">
         <header class="text-center">
-            <h1 class="text-4xl font-extrabold text-gray-900 mb-2">Einsatzplaner-Feiertage</h1>
-            <p class="text-gray-600">Alle Daten werden direkt in Ihrem Browser gespeichert.</p>
+            <h1 class="text-4xl font-extrabold text-gray-900 mb-2">Fahrer Einsatzplaner (Lokale Speicherung)</h1>
+            <p class="text-gray-600">Alle Daten werden direkt in Ihrem Browser gespeichert (localStorage).</p>
         </header>
 
-        <!-- Modaler Dialog für Fehlermeldungen / Bestätigungen -->
         <div id="alert-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-40">
             <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full">
                 <h3 id="alert-title" class="text-lg font-bold mb-4">Meldung</h3>
@@ -71,7 +137,6 @@
             </div>
         </div>
 
-        <!-- Modaler Dialog für Bearbeitung -->
         <div id="edit-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-40">
             <div class="bg-white p-6 rounded-xl shadow-2xl max-w-lg w-full">
                 <h3 class="text-xl font-bold text-teal-700 mb-6">Schicht bearbeiten</h3>
@@ -96,7 +161,7 @@
                     </div>
                 </div>
 
-                <label for="edit-description" class="block text-sm font-medium text-gray-700 mb-2">Bemerkungen</label>
+                <label for="edit-description" class="block text-sm font-medium text-gray-700 mb-2">Bemerkungen / Beschreibung (optional)</label>
                 <textarea id="edit-description" rows="2" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500"></textarea>
 
                 <div class="mt-6 flex justify-end space-x-3">
@@ -105,27 +170,12 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Modaler Dialog für Fahrerverwaltung -->
-        <div id="driver-management-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-40">
-            <div class="bg-white p-6 rounded-xl shadow-2xl max-w-lg w-full">
-                <h3 class="text-xl font-bold text-teal-700 mb-6">Fahrerliste verwalten</h3>
-                <ul id="driver-list-for-management" class="space-y-3 max-h-80 overflow-y-auto pr-2">
-                    <!-- Driver list will be injected here -->
-                </ul>
-                <div class="mt-6 flex justify-end">
-                    <button onclick="hideDriverManagementModal()" class="px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">Schließen</button>
-                </div>
-            </div>
-        </div>
 
-
-        <!-- Fahrer hinzufügen Sektion -->
         <div class="card">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Fahrer verwalten</h2>
-            <div class="flex flex-col sm:flex-row gap-4 items-end">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">🧍 Fahrer hinzufügen / verwalten</h2>
+            <div class="flex flex-col sm:flex-row gap-4 items-end mb-6">
                 <div class="flex-grow">
-                     <label for="new-driver-name-input" class="block text-sm font-medium text-gray-700">Neuen Fahrer hinzufügen</label>
+                     <label for="new-driver-name-input" class="block text-sm font-medium text-gray-700">Name des Fahrers (wird automatisch zur Liste hinzugefügt)</label>
                     <input 
                         type="text" 
                         id="new-driver-name-input" 
@@ -140,25 +190,40 @@
                 >
                     Fahrer hinzufügen
                 </button>
-
-                <button 
-                    onclick="showDriverManagementModal()" 
-                    class="w-full sm:w-auto px-6 py-3 bg-gray-500 text-white font-semibold rounded-lg shadow-md hover:bg-gray-600 transition duration-150 transform hover:scale-[1.02]"
-                >
-                    Fahrerliste verwalten
-                </button>
             </div>
-        </div>
 
-        <!-- Schicht Anlegen Sektion (Batch-Erstellung) -->
+            <div class="mt-4 border-t pt-4">
+                <h3 class="text-lg font-semibold text-gray-700 mb-3">Fahrer löschen:</h3>
+                <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+                    <div class="flex-grow w-full">
+                        <label for="driver-select-for-deletion" class="block text-sm font-medium text-gray-700">Zu löschenden Fahrer auswählen</label>
+                        <select 
+                            id="driver-select-for-deletion" 
+                            class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 bg-white"
+                            aria-label="Fahrer zum Löschen auswählen"
+                        >
+                            <option value="" disabled selected>Wählen Sie einen Fahrer...</option>
+                            </select>
+                    </div>
+                    <button 
+                        id="delete-driver-btn"
+                        onclick="initiateDriverDeletion()" 
+                        class="w-full sm:w-auto px-6 py-3 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition duration-150"
+                        disabled
+                    >
+                        Ausgewählten Fahrer löschen
+                    </button>
+                </div>
+                <p id="no-drivers-message" class="text-gray-500 text-sm italic mt-3 hidden">Keine Fahrer zum Löschen vorhanden.</p>
+            </div>
+            </div>
+
         <div class="card">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Schicht anlegen & Fahrer zuweisen</h2>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">📅 Schicht anlegen & Fahrer zuweisen</h2>
             <p class="text-sm text-gray-500 mb-4">Fügen Sie mehrere Schichten zur Liste hinzu, bevor Sie diese gesammelt anlegen.</p>
 
-            <!-- Eingabefelder -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                <!-- Fahrer Dropdown (Gespeicherte Namen) -->
-                <div>
+            <div class="flex flex-wrap gap-4 mb-4">
+                <div class="w-full sm:w-1/3 flex-grow">
                     <label for="driver-select" class="block text-sm font-medium text-gray-700">Fahrer auswählen</label>
                     <select 
                         id="driver-select" 
@@ -169,29 +234,31 @@
                     </select>
                 </div>
 
-                <!-- Datum auswählen -->
-                <div>
-                    <label for="shift-date-select" class="block text-sm font-medium text-gray-700">Datum</label>
-                    <input type="date" id="shift-date-select" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500" value="">
+                <div class="w-full sm:w-1/3 flex-grow">
+                    <label for="shift-date-select" class="block text-sm font-medium text-gray-700">Datum auswählen</label>
+                    <select 
+                        id="shift-date-select" 
+                        class="date-select mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500 bg-white"
+                        aria-label="Datum auswählen"
+                        required
+                    >
+                        </select>
                 </div>
                 
-                <!-- Startzeit (Größer) -->
-                <div>
-                    <label for="start-time" class="block text-sm font-medium text-gray-700">Startzeit</label>
+                <div class="w-full sm:w-1/6 min-w-[120px]">
+                    <label for="start-time" class="block text-sm font-medium text-gray-700">Von</label>
                     <input type="time" id="start-time" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm form-input-lg focus:ring-teal-500 focus:border-teal-500">
                 </div>
 
-                <!-- Endzeit (Größer) -->
-                <div>
-                    <label for="end-time" class="block text-sm font-medium text-gray-700">Endzeit</label>
+                <div class="w-full sm:w-1/6 min-w-[120px]">
+                    <label for="end-time" class="block text-sm font-medium text-gray-700">Bis</label>
                     <input type="time" id="end-time" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm form-input-lg focus:ring-teal-500 focus:border-teal-500">
                 </div>
             </div>
 
-            <!-- Beschreibung und Hinzufügen Button -->
             <div class="flex flex-col md:flex-row gap-4 mb-6 items-end">
                 <div class="flex-grow">
-                    <label for="shift-description" class="block text-sm font-medium text-gray-700">Beschreibung (optional)</label>
+                    <label for="shift-description" class="block text-sm font-medium text-gray-700">Bemerkungen / Beschreibung (optional)</label>
                     <input type="text" id="shift-description" placeholder="Z.B. Frühe Schicht, Auslieferung A" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500">
                 </div>
                 <button id="add-shift-btn" onclick="addPendingShift()" class="flex-shrink-0 w-full md:w-auto px-6 py-3 bg-teal-500 text-white font-bold rounded-lg hover:bg-teal-600 transition duration-150 shadow-md">
@@ -199,25 +266,29 @@
                 </button>
             </div>
 
-            <!-- Liste der gesammelten Schichten (Pending Shifts) -->
             <div id="pending-shifts-container" class="mb-6 space-y-2 border-t pt-4 hidden">
                 <h3 class="text-lg font-semibold text-gray-700">Zu erstellende Schichten:</h3>
                 <ul id="pending-shifts-list" class="space-y-2">
-                    <!-- Pending shifts will be injected here -->
-                </ul>
+                    </ul>
             </div>
 
-            <!-- Haupt-Button zum Anlegen (Breiter und unter den Feldern) -->
             <button id="submit-shift-btn" onclick="submitPendingShifts()" class="w-full btn-primary text-xl font-extrabold py-4 rounded-xl shadow-lg mt-6" disabled>
                 Schicht(en) anlegen
             </button>
         </div>
 
         
-        <!-- Einsatzübersicht Sektion (Listenansicht mit Bearbeiten/Löschen) -->
         <div class="card mt-8">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Einsatzübersicht</h2>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">📅 Einsatzübersicht (Bearbeitbar & Löschbar)</h2>
 
+            <div class="flex justify-end mb-4 print:hidden">
+                <button 
+                    onclick="window.print()" 
+                    class="px-6 py-2 bg-gray-500 text-white font-semibold rounded-lg shadow-md hover:bg-gray-600 transition duration-150"
+                >
+                    <span class="text-lg">🖨️ Einsatzliste drucken</span>
+                </button>
+            </div>
             <div id="overview-container" class="overflow-x-auto relative">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -225,13 +296,12 @@
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky-col">Fahrer</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Datum</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start - Ende</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Beschreibung</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bemerkungen/Beschreibung</th>
                             <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aktionen</th>
                         </tr>
                     </thead>
                     <tbody id="shifts-table-body" class="bg-white divide-y divide-gray-200">
-                        <!-- Schichten werden hier eingefügt -->
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
             <p id="no-shifts-message" class="p-4 text-center text-gray-500 hidden">Keine Schichten geplant.</p>
@@ -239,15 +309,61 @@
 
     </div>
 
-    <!-- Lokale Speicherlogik (localStorage) -->
     <script>
         // --- KONSTANTEN & STATE ---
-        const STORAGE_KEY = 'driverPlanerDataV2'; // Neuer Schlüssel, um Konflikte mit alten Versionen zu vermeiden
+        const STORAGE_KEY = 'driverPlanerDataV2';
         let data = {
             drivers: [], // Array von Namen
             shifts: []   // Array von Schicht-Objekten
         };
         let pendingShifts = [];
+
+        // Array von vordefinierten, nur zukünftigen Terminen (Heute ist der 11. Nov 2025)
+        const specialDates = [
+            
+            // Nov 2025 Planning Weekends 
+            { date: '2025-11-21', label: '21. November (S/N)' }, 
+            { date: '2025-11-22', label: '22. November 2025 (S/N)' }, 
+            { date: '2025-11-23', label: '23. November 2025 (S/N)', isGroupSeparator: true },
+            { date: '2025-11-28', label: '28. November 2025 (S/N)' }, 
+            { date: '2025-11-29', label: '29. November 2025 (S/N)' }, 
+            { date: '2025-11-30', label: '30. November 2025 (S/N)', isGroupSeparator: true },
+            
+            // Weihnachten / Silvester 2025
+            { date: '2025-12-24', label: '24. Dezember 2025 (Heiligabend)' }, 
+            { date: '2025-12-25', label: '25. Dezember 2025 (1. Weihnachtstag)' },
+            { date: '2025-12-26', label: '26. Dezember 2025 (2. Weihnachtstag)' },
+            { date: '2025-12-31', label: '31. Dezember 2025 (Silvester)', isGroupSeparator: true }, 
+            { date: '2026-01-01', label: '01. Januar 2026 (Neujahr)', isGroupSeparator: true }, 
+
+                      
+            // Frühling 2026 (Bewegliche Feiertage basierend auf Ostern 2026)
+            { date: '2026-04-03', label: '03. April 2026 (Karfreitag)' },
+            { date: '2026-04-06', label: '06. April 2026 (Ostermontag)' },
+            { date: '2026-05-01', label: '01. Mai 2026 (Tag der Arbeit)' },
+            { date: '2026-05-14', label: '14. Mai 2026 (Christi Himmelfahrt)' },
+            { date: '2026-05-25', label: '25. Mai 2026 (Pfingstmontag)', isGroupSeparator: true },
+
+            // Herbst 2026 (Feste Feiertage)
+            { date: '2026-10-03', label: '03. Oktober 2026 (Tag der Deutschen Einheit)' },
+            { date: '2026-10-31', label: '31. Oktober 2026 (Reformationstag)', isGroupSeparator: true },
+
+            
+            // Zusätzliche Planungstage 2026 
+            { date: '2026-11-20', label: '20. November 2026 (S/N)' }, 
+            { date: '2026-11-21', label: '21. November 2026 (S/N)' }, 
+            { date: '2026-11-22', label: '22. November 2026 (S/N)', isGroupSeparator: true },
+            { date: '2026-11-27', label: '27. November 2026 (S/N)' }, 
+            { date: '2026-11-28', label: '28. November 2026 (S/N)' }, 
+            { date: '2026-11-29', label: '29. November 2026 (S/N)', isGroupSeparator: true },
+
+            // Weihnachten / Silvester 2026 
+            { date: '2026-12-24', label: '24. Dezember 2026 (Heiligabend)' },
+            { date: '2026-12-25', label: '25. Dezember 2026 (1.Weihnachtstag)' },
+            { date: '2026-12-26', label: '26. Dezember 2026 (2.Weihnachtstag)' },
+            { date: '2026-12-31', label: '31. Dezember 2026 (Silvester)' },
+            { date: '2027-01-01', label: '01. Januar 2027 (Neujahr)', isGroupSeparator: true },
+        ];
         
         // --- DOM-ELEMENTE ---
         const newDriverInput = document.getElementById('new-driver-name-input');
@@ -267,8 +383,9 @@
         const alertConfirmBtn = document.getElementById('alert-confirm-btn');
         const alertCancelBtn = document.getElementById('alert-cancel-btn');
         const editModal = document.getElementById('edit-modal');
-        const driverManagementModal = document.getElementById('driver-management-modal');
-        const driverListForManagement = document.getElementById('driver-list-for-management');
+        const driverSelectForDeletion = document.getElementById('driver-select-for-deletion');
+        const deleteDriverBtn = document.getElementById('delete-driver-btn');
+        const noDriversMessage = document.getElementById('no-drivers-message');
 
 
         // --- LOCAL STORAGE HILFSFUNKTIONEN ---
@@ -277,7 +394,6 @@
                 const storedData = localStorage.getItem(STORAGE_KEY);
                 if (storedData) {
                     const parsedData = JSON.parse(storedData);
-                    // Sicherstellen, dass beide Schlüssel vorhanden sind
                     data.drivers = parsedData.drivers || [];
                     data.shifts = parsedData.shifts || [];
                 }
@@ -298,7 +414,7 @@
 
         // --- ALLGEMEINE HILFSFUNKTIONEN ---
 
-        // UUID-Generator für lokale, eindeutige IDs
+        // UUID-Generator
         function generateUUID() {
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
                 var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
@@ -333,71 +449,77 @@
         function hideEditModal() {
             editModal.classList.add('hidden');
         }
-        
-        // --- FAHRER LÖSCHEN LOGIK ---
 
-        window.showDriverManagementModal = function() {
-            renderDriverManagementList();
-            driverManagementModal.classList.remove('hidden');
-        }
-        
-        window.hideDriverManagementModal = function() {
-            driverManagementModal.classList.add('hidden');
-        }
-        
-        function renderDriverManagementList() {
-            driverListForManagement.innerHTML = '';
-            
-            if (data.drivers.length === 0) {
-                driverListForManagement.innerHTML = '<li class="text-gray-500 p-3">Keine Fahrer vorhanden.</li>';
-                return;
+        // Korrekte Formatierung des Datums (YYYY-MM-DD zu DD.MM.YYYY)
+        function formatDateDE(dateString) {
+            if (!dateString || !dateString.includes('-')) {
+                return 'N/A';
             }
-            
-            data.drivers.sort().forEach(driverName => {
-                const li = document.createElement('li');
-                li.className = 'flex justify-between items-center p-3 bg-white border border-gray-200 rounded-lg shadow-sm';
-                li.innerHTML = `
-                    <span class="text-lg font-medium text-gray-800">${driverName}</span>
-                    <button onclick="confirmAndDeleteDriver('${driverName}')" class="px-3 py-1 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition duration-150">
-                        Löschen
-                    </button>
-                `;
-                driverListForManagement.appendChild(li);
+            const [year, month, day] = dateString.split('-');
+            return `${day}.${month}.${year}`;
+        }
+
+        
+        // --- DATUM LOGIK ---
+
+        function getTodayNormalized() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); 
+            return today;
+        }
+
+        function getFutureDates() {
+            const todayNormalized = getTodayNormalized().getTime();
+            const futureDates = [];
+
+            specialDates.forEach(d => {
+                if (d.isGroupSeparator) {
+                    futureDates.push(d);
+                    return;
+                }
+
+                // Wichtig: 'T00:00:00' hinzufügen, um Zeitzonenprobleme zu minimieren
+                const slotDate = new Date(d.date + 'T00:00:00'); 
+                
+                if (slotDate.getTime() >= todayNormalized) {
+                    futureDates.push(d);
+                }
             });
+
+            return futureDates;
         }
-        
-        window.confirmAndDeleteDriver = function(driverName) {
-             const affectedShiftsCount = data.shifts.filter(s => s.driver === driverName).length;
-             
-             let message = `Sind Sie sicher, dass Sie den Fahrer <strong>${driverName}</strong> unwiderruflich löschen möchten?`;
-             
-             if (affectedShiftsCount > 0) {
-                 message += `<br><br><strong>WARNUNG:</strong> Dadurch werden auch <strong>alle ${affectedShiftsCount} zugewiesenen Schichten</strong> dieses Fahrers gelöscht.`;
-             }
-             
-             showAlert(
-                 'Fahrer löschen bestätigen',
-                 message,
-                 true, // isConfirm = true
-                 () => deleteDriverAndShifts(driverName) // onConfirm callback
-             );
+
+        /**
+         * Erstellt das HTML für die Datums-Auswahloptionen aus den ZUKÜNFTIGEN Daten.
+         */
+        function createDateOptions() {
+            let options = '<option value="" disabled selected>Datum auswählen...</option>';
+            const futureDates = getFutureDates(); 
+
+            futureDates.forEach(d => {
+                if (d.isGroupSeparator) {
+                    // Visueller Trenner
+                    options += `<option value="" disabled 
+                                class="bg-gray-100 text-center font-bold text-gray-700 
+                                border-t border-b border-gray-400 py-1 select-none">
+                                    &mdash; ${d.label.toUpperCase()} &mdash;
+                                </option>`;
+                } else {
+                    const dateObj = new Date(d.date + 'T00:00:00');
+                    const weekday = dateObj.toLocaleDateString('de-DE', { weekday: 'short' }); 
+                    const displayLabel = `${weekday} ${d.label}`;
+
+                    // Das 'value' ist das YYYY-MM-DD Format
+                    options += `<option value="${d.date}">${displayLabel}</option>`;
+
+                }
+            });
+            return options;
         }
-        
-        function deleteDriverAndShifts(driverName) {
-            // 1. Fahrer aus der Driver-Liste entfernen
-            data.drivers = data.drivers.filter(name => name !== driverName);
-            
-            // 2. Schichten dieses Fahrers aus der Shifts-Liste entfernen
-            const affectedShiftsCount = data.shifts.filter(s => s.driver === driverName).length;
-            data.shifts = data.shifts.filter(s => s.driver !== driverName);
-            
-            // 3. Daten speichern und UI aktualisieren
-            saveLocalData();
-            populateDriverDropdown();
-            loadAndRenderShifts();
-            renderDriverManagementList(); // Die offene Liste aktualisieren
-            
-            showAlert('Erfolg', `Fahrer <strong>${driverName}</strong> und ${affectedShiftsCount} Schicht(en) wurden gelöscht.`);
+
+        function populateDateDropdown() {
+            const optionsHtml = createDateOptions();
+            shiftDateInput.innerHTML = optionsHtml;
         }
 
 
@@ -406,7 +528,6 @@
         function populateDriverDropdown() {
             driverSelect.innerHTML = '<option value="" disabled selected>Fahrer auswählen...</option>';
             
-            // Sortiert die Fahrernamen alphabetisch
             data.drivers.sort();
 
             if (data.drivers.length > 0) {
@@ -422,6 +543,34 @@
             }
         }
 
+        /**
+         * Füllt das Dropdown-Menü zur Auswahl eines Fahrers zum Löschen.
+         */
+        function populateDriverDeletionDropdown() {
+            driverSelectForDeletion.innerHTML = '<option value="" disabled selected>Wählen Sie einen Fahrer...</option>';
+            deleteDriverBtn.disabled = true;
+
+            if (data.drivers.length === 0) {
+                noDriversMessage.classList.remove('hidden');
+                return;
+            }
+            noDriversMessage.classList.add('hidden');
+            data.drivers.sort();
+
+            data.drivers.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                driverSelectForDeletion.appendChild(option);
+            });
+            
+            // Aktiviert den Lösch-Button, wenn eine Auswahl getroffen wird
+            driverSelectForDeletion.onchange = () => {
+                deleteDriverBtn.disabled = !driverSelectForDeletion.value;
+            };
+        }
+
+
         window.addDriver = function() {
             const name = newDriverInput.value.trim();
             if (!name) {
@@ -434,21 +583,63 @@
                 return;
             }
 
-            // Fahrer zum lokalen Array hinzufügen
             data.drivers.push(name);
             saveLocalData();
             populateDriverDropdown();
+            populateDriverDeletionDropdown(); 
 
             newDriverInput.value = '';
-            showAlert('Erfolg', `Fahrer ${name} hinzugefügt.`);
+            showAlert('Erfolg', `Fahrer **${name}** hinzugefügt.`);
         }
         
+        window.initiateDriverDeletion = function() {
+            const name = driverSelectForDeletion.value;
+            if (name) {
+                confirmAndDeleteDriver(name);
+            }
+        }
+
+        window.confirmAndDeleteDriver = function(name) {
+            const shiftsFound = data.shifts.filter(s => s.driver === name).length;
+
+            if (shiftsFound > 0) {
+                showAlert(
+                    'Fehler: Schichten vorhanden',
+                    `**${name}** kann nicht gelöscht werden, da noch **${shiftsFound}** Schicht(en) im Einsatzplan eingetragen sind. Bitte löschen oder bearbeiten Sie diese zuerst.`,
+                    false
+                );
+            } else {
+                 showAlert(
+                    'Fahrer löschen bestätigen',
+                    `Sind Sie sicher, dass Sie den Fahrer **${name}** unwiderruflich löschen möchten?`,
+                    true,
+                    () => deleteDriver(name)
+                );
+            }
+        }
+
+        window.deleteDriver = function(name) {
+            const initialLength = data.drivers.length;
+            
+            data.drivers = data.drivers.filter(d => d !== name);
+
+            if (data.drivers.length < initialLength) {
+                saveLocalData();
+                populateDriverDropdown();
+                populateDriverDeletionDropdown();
+                showAlert('Erfolg', `Fahrer **${name}** erfolgreich gelöscht.`);
+            } else {
+                 showAlert('Fehler', `Fahrer ${name} konnte nicht gelöscht werden.`);
+            }
+        }
+
+
         // --- SCHICHT ANLEGEN LOGIK (Batch-Erstellung) ---
 
         window.addPendingShift = function() {
             const driver = driverSelect.value;
-            const driverName = driverSelect.options[driverSelect.selectedIndex].text;
-            const date = shiftDateInput.value;
+            const driverName = driverSelect.options[driverSelect.selectedIndex] ? driverSelect.options[driverSelect.selectedIndex].text : driver;
+            const date = shiftDateInput.value; 
             const startTime = startTimeInput.value;
             const endTime = endTimeInput.value;
             const description = descriptionInput.value.trim();
@@ -462,7 +653,7 @@
             pendingShifts.push(newShift);
             updatePendingList();
 
-            // Nur die Zeitfelder und Beschreibung zurücksetzen
+            // Nur Zeit und Beschreibung zurücksetzen
             startTimeInput.value = '';
             endTimeInput.value = '';
             descriptionInput.value = '';
@@ -485,7 +676,7 @@
                 li.className = 'flex justify-between items-center p-3 bg-gray-50 border border-gray-200 rounded-lg';
                 li.innerHTML = `
                     <span class="text-sm font-medium text-gray-800">
-                        ${shift.driver} am ${shift.date} von ${shift.startTime} bis ${shift.endTime}
+                        ${shift.driver} am ${formatDateDE(shift.date)} von ${shift.startTime} bis ${shift.endTime}
                         ${shift.description ? ` (${shift.description})` : ''}
                     </span>
                     <button onclick="removePendingShift(${index})" class="text-red-500 hover:text-red-700 ml-4 font-bold">
@@ -502,9 +693,8 @@
         }
 
         function resetForm() {
-            // Setzt alle Schichtfelder zurück
             driverSelect.value = '';
-            shiftDateInput.value = new Date().toISOString().substring(0, 10);
+            shiftDateInput.value = ''; 
             startTimeInput.value = '';
             endTimeInput.value = '';
             descriptionInput.value = '';
@@ -512,39 +702,50 @@
             updatePendingList();
         }
 
-
         window.submitPendingShifts = function() {
             if (pendingShifts.length === 0) {
                 showAlert('Info', "Es sind keine Schichten zum Anlegen vorhanden.");
                 return;
             }
             
-            // Fügen Sie UUIDs hinzu und fügen Sie sie zum lokalen Datensatz hinzu
+            // UUIDs hinzufügen
             const newShifts = pendingShifts.map(shift => ({
                 id: generateUUID(), 
-                ...shift
+                ...shift 
             }));
 
+            // Schichten zur Hauptliste hinzufügen
             data.shifts.push(...newShifts);
+            
+            // Speichern und UI neu rendern
             saveLocalData();
-            loadAndRenderShifts(); // UI neu laden
+            loadAndRenderShifts();
 
             const count = pendingShifts.length;
-            resetForm();
+            
+            // Formular zurücksetzen
+            resetForm(); 
+            
             showAlert('Erfolg', `${count} Schicht(en) erfolgreich angelegt.`);
         }
 
-        // --- EINSATZÜBERSICHT LOGIK (LISTEN-ANSICHT) ---
+        // --- EINSATZÜBERSICHT LOGIK ---
 
-        // Ersetzt listenForShifts (liest nun aus der lokalen Variable 'data')
         function loadAndRenderShifts() {
             const shifts = data.shifts;
 
-            // Sortierung in JavaScript: Zuerst nach Datum, dann nach Startzeit
+            // Sortierung nach Datum und dann Startzeit
             shifts.sort((a, b) => {
-                const dateA = new Date(`${a.date}T${a.startTime}`);
-                const dateB = new Date(`${b.date}T${b.startTime}`);
-                return dateA - dateB;
+                const dateTimeA = `${a.date}T${a.startTime}`;
+                const dateTimeB = `${b.date}T${b.startTime}`;
+                
+                if (dateTimeA < dateTimeB) {
+                    return -1;
+                }
+                if (dateTimeA > dateTimeB) {
+                    return 1;
+                }
+                return 0;
             });
 
             renderShifts(shifts);
@@ -552,28 +753,32 @@
 
         function renderShifts(shifts) {
             shiftsTableBody.innerHTML = '';
-            if (shifts.length === 0) {
+            
+            if (!shifts || shifts.length === 0) {
                 noShiftsMessage.classList.remove('hidden');
                 return;
             }
+            
             noShiftsMessage.classList.add('hidden');
 
             shifts.forEach(shift => {
                 const row = shiftsTableBody.insertRow();
                 row.className = 'hover:bg-gray-100 transition duration-150';
 
-                // Fahrer (Sticky Column)
-                row.insertCell().innerHTML = `<div class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 sticky-col">${shift.driver || 'N/A'}</div>`;
+                // Fahrer (Sticky Column) - KORRIGIERT: Klassen direkt auf die Zelle (<td>)
+                const driverCell = row.insertCell();
+                driverCell.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 sticky-col';
+                driverCell.textContent = shift.driver || 'N/A';
 
-                // Datum
-                row.insertCell().textContent = shift.date ? new Date(shift.date).toLocaleDateString('de-DE') : 'N/A';
+                // Datum (Korrekt formatiert)
+                row.insertCell().textContent = formatDateDE(shift.date);
                 
                 // Start - Ende Zeit
                 row.insertCell().textContent = `${shift.startTime || '--'} - ${shift.endTime || '--'}`;
 
-                // Beschreibung (optional)
+                // Bemerkungen/Beschreibung
                 const descCell = row.insertCell();
-                descCell.className = 'px-6 py-4 text-sm text-gray-500 hidden md:table-cell truncate max-w-xs';
+                descCell.className = 'px-6 py-4 text-sm text-gray-500 truncate max-w-xs';
                 descCell.textContent = shift.description || '-';
 
                 // Aktionen
@@ -592,7 +797,7 @@
             });
         }
         
-        // --- SCHICHT BEARBEITEN / LÖSCHEN FUNKTIONEN ---
+        // --- BEARBEITEN / LÖSCHEN SCHICHTEN FUNKTIONEN ---
 
         window.openEditModal = function(id, driver, date, start, end, description) {
             document.getElementById('edit-shift-id').value = id;
@@ -600,7 +805,6 @@
             document.getElementById('edit-date').value = date;
             document.getElementById('edit-start-time').value = start;
             document.getElementById('edit-end-time').value = end;
-            // Wichtig: description ist ein String, der escaped werden muss, wenn er aus dem HTML-Attribut kommt
             document.getElementById('edit-description').value = description.trim(); 
 
             editModal.classList.remove('hidden');
@@ -622,11 +826,9 @@
 
             hideEditModal();
             
-            // Finde den Index der zu bearbeitenden Schicht
             const index = data.shifts.findIndex(s => s.id === id);
 
             if (index > -1) {
-                // Daten lokal aktualisieren
                 data.shifts[index] = {
                     ...data.shifts[index],
                     driver: newDriver,
@@ -636,45 +838,53 @@
                     description: newDescription,
                 };
                 
-                // Speichern und UI neu rendern
+                // Fügt den neuen/geänderten Fahrernamen automatisch zur Liste hinzu
+                if (!data.drivers.includes(newDriver)) {
+                    data.drivers.push(newDriver);
+                    populateDriverDropdown();
+                    populateDriverDeletionDropdown();
+                }
+
                 saveLocalData();
                 loadAndRenderShifts();
+                showAlert('Erfolg', 'Schicht erfolgreich bearbeitet.');
             } else {
                  showAlert('Fehler', "Schicht nicht gefunden.");
             }
         }
 
         window.confirmAndDelete = function(id, driverName, date) {
+            // Korrekte Datumsausgabe im Lösch-Dialog
             showAlert(
                 'Löschen bestätigen',
-                `Sind Sie sicher, dass Sie die Schicht für <strong>${driverName}</strong> am ${new Date(date).toLocaleDateString('de-DE')} unwiderruflich löschen möchten?`,
-                true, // isConfirm = true
-                () => deleteShift(id) // onConfirm callback
+                `Sind Sie sicher, dass Sie die Schicht für <strong>${driverName}</strong> am ${formatDateDE(date)} unwiderruflich löschen möchten?`,
+                true,
+                () => deleteShift(id)
             );
         }
 
         function deleteShift(id) {
             const initialLength = data.shifts.length;
             
-            // Filtern Sie die Schicht aus dem Array heraus
             data.shifts = data.shifts.filter(s => s.id !== id);
 
             if (data.shifts.length < initialLength) {
                 saveLocalData();
                 loadAndRenderShifts();
+                showAlert('Erfolg', 'Schicht erfolgreich gelöscht.');
             } else {
                  showAlert('Fehler', "Schicht konnte nicht gelöscht werden.");
             }
         }
 
+
         // --- INITIALISIERUNG ---
         window.onload = function() {
             loadLocalData();
             populateDriverDropdown();
+            populateDateDropdown(); 
+            populateDriverDeletionDropdown(); 
             loadAndRenderShifts();
-            
-            // Setzt das heutige Datum als Standard
-            shiftDateInput.value = new Date().toISOString().substring(0, 10);
             
             if (data.drivers.length === 0) {
                  showAlert('Willkommen', 'Dies ist die lokale Version des Planers. Fügen Sie zuerst einen Fahrer hinzu, um zu starten.');
@@ -683,4 +893,3 @@
     </script>
 </body>
 </html>
-
