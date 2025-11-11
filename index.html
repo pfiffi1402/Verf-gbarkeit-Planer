@@ -5,8 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Einsatzplaner</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <style>
-        /* Angepasstes Styling für besseres Aussehen und größere Eingabefelder */
+        /* (Ihr CSS bleibt unverändert) */
         :root {
             --primary-color: #0d9488; /* Teal-700 */
         }
@@ -20,7 +23,6 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             padding: 1.5rem;
         }
-        /* Custom Class für größere Zeitfelder */
         .form-input-lg {
             font-size: 1.25rem; /* text-xl */
             padding: 0.75rem 1rem;
@@ -37,7 +39,6 @@
             transform: translateY(-1px);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-        /* Mobile Anpassung: Sicherstellen, dass die Tabelle auf kleinen Bildschirmen scrollbar ist */
         #overview-container {
             overflow-x: auto;
         }
@@ -48,69 +49,57 @@
             background-color: white;
             box-shadow: 2px 0 3px -2px rgba(0, 0, 0, 0.1);
         }
-        
+                
         /* --- Druck-Optimierung (@media print) --- */
         @media print {
-            /* 1. Unnötige Elemente ausblenden */
             header, 
-            .card:not(:last-child), /* Blendet alle "card"-Container aus, außer der letzten (Einsatzübersicht) */
+            .card:not(:nth-last-child(2)),
             #edit-modal, 
             #alert-modal, 
             .btn-primary,
             #submit-shift-btn,
             #add-shift-btn,
-            .px-6.py-4.whitespace-nowrap:last-child, /* Aktionen-Spalte (Löschen/Bearbeiten) */
+            .px-6.py-4.whitespace-nowrap:last-child, /* Aktionen-Spalte */
             .px-6.py-3:last-child, /* Aktionen-Spaltenüberschrift */
-            .print\:hidden /* Der neue Druck-Button */
+            .print\:hidden,
+            .card:last-child /* Statistik-Karte */
             {
                 display: none !important;
             }
-
-            /* 2. Allgemeine Layout-Optimierung */
             body {
                 background-color: white !important;
                 padding: 0 !important;
                 margin: 0 !important;
                 font-size: 10pt;
             }
-
             .card {
                 box-shadow: none !important;
                 border: none !important;
                 padding: 0 !important;
                 margin: 0 !important;
             }
-            
-            /* 3. Tabellen-Optimierung */
             #overview-container {
-                overflow-x: visible !important; /* Kein Scrollen beim Drucken */
+                overflow-x: visible !important; 
             }
-
             table {
                 width: 100%;
                 border-collapse: collapse;
             }
-
             th, td {
-                padding: 4px 8px; /* Reduzierter Abstand für mehr Inhalt */
-                border: 1px solid #ccc; /* Klare Linien für die Tabelle */
+                padding: 4px 8px; 
+                border: 1px solid #ccc; 
             }
-
             .sticky-col {
-                position: static !important; /* Sticky-Funktion im Druck aufheben */
+                position: static !important; 
                 box-shadow: none !important;
             }
-
-            /* 4. Titel hinzufügen, da Header fehlt */
-            .card:last-child h2 {
+            .card:nth-last-child(2) h2 {
                 font-size: 18pt;
                 text-align: center;
                 margin-bottom: 10px;
                 padding-bottom: 5px;
                 border-bottom: 2px solid #000;
             }
-
-            /* 5. Fußzeile für Druckdatum */
             @page {
                 size: A4;
                 margin: 1cm;
@@ -118,9 +107,10 @@
         }
     </style>
 </head>
-<body class="min-h-screen p-4 md:p-8"
-
+<body class="min-h-screen p-4 md:p-8">
+    
     <div class="max-w-7xl mx-auto space-y-8">
+        
         <header class="text-center">
             <h1 class="text-4xl font-extrabold text-gray-900 mb-2">Einsatzplaner</h1>
             <p class="text-gray-600">Alle Daten werden direkt in Ihrem Browser gespeichert.</p>
@@ -141,7 +131,6 @@
             <div class="bg-white p-6 rounded-xl shadow-2xl max-w-lg w-full">
                 <h3 class="text-xl font-bold text-teal-700 mb-6">Schicht bearbeiten</h3>
                 <input type="hidden" id="edit-shift-id">
-
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label for="edit-driver" class="block text-sm font-medium text-gray-700">Fahrer</label>
@@ -160,10 +149,8 @@
                         <input type="time" id="edit-end-time" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500 form-input-lg">
                     </div>
                 </div>
-
                 <label for="edit-description" class="block text-sm font-medium text-gray-700 mb-2">Bemerkungen / Beschreibung (optional)</label>
                 <textarea id="edit-description" rows="2" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-teal-500 focus:border-teal-500"></textarea>
-
                 <div class="mt-6 flex justify-end space-x-3">
                     <button onclick="hideEditModal()" class="px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">Abbrechen</button>
                     <button onclick="saveEditedShift()" class="px-4 py-2 btn-primary font-semibold rounded-lg">Speichern</button>
@@ -183,7 +170,6 @@
                         class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                     />
                 </div>
-                
                 <button 
                     onclick="addDriver()" 
                     class="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-150 transform hover:scale-[1.02]"
@@ -191,7 +177,6 @@
                     Fahrer hinzufügen
                 </button>
             </div>
-
             <div class="mt-4 border-t pt-4">
                 <h3 class="text-lg font-semibold text-gray-700 mb-3">Fahrer löschen:</h3>
                 <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
@@ -203,7 +188,7 @@
                             aria-label="Fahrer zum Löschen auswählen"
                         >
                             <option value="" disabled selected>Wählen Sie einen Fahrer...</option>
-                            </select>
+                        </select>
                     </div>
                     <button 
                         id="delete-driver-btn"
@@ -216,12 +201,11 @@
                 </div>
                 <p id="no-drivers-message" class="text-gray-500 text-sm italic mt-3 hidden">Keine Fahrer zum Löschen vorhanden.</p>
             </div>
-            </div>
+        </div>
 
         <div class="card">
             <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Schicht anlegen</h2>
             <p class="text-sm text-gray-500 mb-4">Fügen Sie mehrere Schichten zur Liste hinzu, bevor Sie diese gesammelt anlegen.</p>
-
             <div class="flex flex-wrap gap-4 mb-4">
                 <div class="w-full sm:w-1/3 flex-grow">
                     <label for="driver-select" class="block text-sm font-medium text-gray-700">Fahrer auswählen</label>
@@ -233,7 +217,6 @@
                         <option value="" disabled selected>Fahrer auswählen...</option>
                     </select>
                 </div>
-
                 <div class="w-full sm:w-1/3 flex-grow">
                     <label for="shift-date-select" class="block text-sm font-medium text-gray-700">Datum auswählen</label>
                     <select 
@@ -242,20 +225,17 @@
                         aria-label="Datum auswählen"
                         required
                     >
-                        </select>
+                    </select>
                 </div>
-                
                 <div class="w-full sm:w-1/6 min-w-[120px]">
                     <label for="start-time" class="block text-sm font-medium text-gray-700">Von</label>
                     <input type="time" id="start-time" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm form-input-lg focus:ring-teal-500 focus:border-teal-500">
                 </div>
-
                 <div class="w-full sm:w-1/6 min-w-[120px]">
                     <label for="end-time" class="block text-sm font-medium text-gray-700">Bis</label>
                     <input type="time" id="end-time" class="mt-1 w-full p-3 border border-gray-300 rounded-lg shadow-sm form-input-lg focus:ring-teal-500 focus:border-teal-500">
                 </div>
             </div>
-
             <div class="flex flex-col md:flex-row gap-4 mb-6 items-end">
                 <div class="flex-grow">
                     <label for="shift-description" class="block text-sm font-medium text-gray-700">Bemerkungen</label>
@@ -265,22 +245,18 @@
                     <span class="text-xl">+ Schicht hinzufügen</span>
                 </button>
             </div>
-
             <div id="pending-shifts-container" class="mb-6 space-y-2 border-t pt-4 hidden">
                 <h3 class="text-lg font-semibold text-gray-700">Zu erstellende Schichten:</h3>
                 <ul id="pending-shifts-list" class="space-y-2">
                     </ul>
             </div>
-
             <button id="submit-shift-btn" onclick="submitPendingShifts()" class="w-full btn-primary text-xl font-extrabold py-4 rounded-xl shadow-lg mt-6" disabled>
                 Schicht(en) anlegen
             </button>
         </div>
-
-        
+                
         <div class="card mt-8">
             <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Einsatzübersicht</h2>
-
             <div class="flex justify-end mb-4 print:hidden">
                 <button 
                     onclick="window.print()" 
@@ -307,57 +283,53 @@
             <p id="no-shifts-message" class="p-4 text-center text-gray-500 hidden">Keine Schichten geplant.</p>
         </div>
 
+        <div class="card">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">📊 Statistik: Fahrer pro Tag & Zeitfenster</h2>
+            <div class="relative h-[400px] w-full">
+                <canvas id="driverStatsChart"></canvas>
+            </div>
+            <p id="no-stats-message" class="p-4 text-center text-gray-500 hidden">Noch keine Schichtdaten für die Statistik vorhanden.</p>
+        </div>
+
     </div>
 
     <script>
         // --- KONSTANTEN & STATE ---
         const STORAGE_KEY = 'driverPlanerDataV2';
         let data = {
-            drivers: [], // Array von Namen
-            shifts: []   // Array von Schicht-Objekten
+            drivers: [], 
+            shifts: []   
         };
         let pendingShifts = [];
+        let myChart = null; // Globale Variable für das Chart-Objekt
 
         const specialDates = [
-            
-            
-            // Nov 2025 Planning Weekends (Text auf "S/N" aktualisiert)
+            // (Ihr 'specialDates' Array bleibt unverändert)
             { date: '2025-11-21', label: '21. November 2025 (S/N)' }, 
             { date: '2025-11-22', label: '22. November 2025 (S/N)' }, 
             { date: '2025-11-23', label: '23. November 2025 (S/N)' }, 
             { date: '2025-11-28', label: '28. November 2025 (S/N)' }, 
             { date: '2025-11-29', label: '29. November 2025 (S/N)' }, 
-            { date: '2025-11-30', label: '30. November 2025 (S/N)' },
-            
-            // Weihnachten / Silvester 2025 / Heilige Drei Könige 2026
+            { date: '2025-11-30', label: '30. November 2025 (S/N)' }, 
             { date: '2025-12-24', label: '24. Dezember 2025 (Heiligabend)' }, 
             { date: '2025-12-25', label: '25. Dezember 2025 (1. Weihnachtstag)' },
             { date: '2025-12-26', label: '26. Dezember 2025 (2. Weihnachtstag)' },
             { date: '2025-12-31', label: '31. Dezember 2025 (Silvester)' }, 
             { date: '2026-01-01', label: '01. Januar 2026 (Neujahr)' }, 
             { date: '2026-01-06', label: '06. Januar 2026 (Heilige Drei Könige/Feiertag ST)' }, 
-            
-            // Frühling 2026 (Bewegliche Feiertage basierend auf Ostern 2026)
             { date: '2026-04-03', label: '03. April 2026 (Karfreitag)' },
             { date: '2026-04-06', label: '06. April 2026 (Ostermontag)' },
             { date: '2026-05-01', label: '01. Mai 2026 (Tag der Arbeit)' },
             { date: '2026-05-14', label: '14. Mai 2026 (Christi Himmelfahrt)' },
             { date: '2026-05-25', label: '25. Mai 2026 (Pfingstmontag)' },
-
-            // Herbst 2026 (Feste Feiertage)
             { date: '2026-10-03', label: '03. Oktober 2026 (Tag der Deutschen Einheit)' },
             { date: '2026-10-31', label: '31. Oktober 2026 (Reformationstag)' },
-
-            
-            // Zusätzliche Planungstage 2026 (Wochenenden und Vorfeiertage) (Text auf "S/N" aktualisiert)
             { date: '2026-11-20', label: '20. November 2026 (S/N)' }, 
             { date: '2026-11-21', label: '21. November 2026 (S/N)' }, 
             { date: '2026-11-22', label: '22. November 2026 (S/N)' },
             { date: '2026-11-27', label: '27. November 2026 (S/N)' }, 
             { date: '2026-11-28', label: '28. November 2026 (S/N)' }, 
             { date: '2026-11-29', label: '29. November 2026 (S/N)' },
-
-            // Weihnachten / Silvester 2026 / Heilige Drei Könige 2027
             { date: '2026-12-24', label: '24. Dezember 2026 (Heiligabend)' },
             { date: '2026-12-25', label: '25. Dezember 2026 (1.Weihnachtstag)' },
             { date: '2026-12-26', label: '26. Dezember 2026 (2.Weihnachtstag)' },
@@ -365,8 +337,9 @@
             { date: '2027-01-01', label: '01. Januar 2027 (Neujahr)' },
             { date: '2027-01-06', label: '06. Januar 2027 (Heilige Drei Könige/Feiertag ST)' },
         ];
-        
+                
         // --- DOM-ELEMENTE ---
+        // (Unverändert)
         const newDriverInput = document.getElementById('new-driver-name-input');
         const driverSelect = document.getElementById('driver-select');
         const shiftDateInput = document.getElementById('shift-date-select');
@@ -388,8 +361,8 @@
         const deleteDriverBtn = document.getElementById('delete-driver-btn');
         const noDriversMessage = document.getElementById('no-drivers-message');
 
-
         // --- LOCAL STORAGE HILFSFUNKTIONEN ---
+        // (Unverändert)
         function loadLocalData() {
             try {
                 const storedData = localStorage.getItem(STORAGE_KEY);
@@ -403,7 +376,6 @@
                 showAlert('Fehler', 'Fehler beim Laden der gespeicherten Daten. Die Daten wurden möglicherweise zurückgesetzt.');
             }
         }
-
         function saveLocalData() {
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -412,25 +384,21 @@
                 showAlert('Fehler', 'Fehler beim Speichern der Daten in Ihrem Browser. Bitte prüfen Sie den Speicherplatz.');
             }
         }
-
+        
         // --- ALLGEMEINE HILFSFUNKTIONEN ---
-
-        // UUID-Generator
+        // (Unverändert)
         function generateUUID() {
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
                 var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
                 return v.toString(16);
             });
         }
-
         function showAlert(title, message, isConfirm = false, onConfirm = () => {}) {
             alertTitle.textContent = title;
             alertMessage.innerHTML = message;
-
             alertCancelBtn.classList.add('hidden');
             alertConfirmBtn.textContent = 'OK';
             alertConfirmBtn.onclick = () => alertModal.classList.add('hidden');
-
             if (isConfirm) {
                 alertTitle.classList.add('text-red-600');
                 alertConfirmBtn.textContent = 'Bestätigen';
@@ -443,15 +411,11 @@
             } else {
                 alertTitle.classList.remove('text-red-600');
             }
-
             alertModal.classList.remove('hidden');
         }
-
         function hideEditModal() {
             editModal.classList.add('hidden');
         }
-
-        // Korrekte Formatierung des Datums (YYYY-MM-DD zu DD.MM.YYYY)
         function formatDateDE(dateString) {
             if (!dateString || !dateString.includes('-')) {
                 return 'N/A';
@@ -460,77 +424,57 @@
             return `${day}.${month}.${year}`;
         }
 
-        
         // --- DATUM LOGIK ---
-
+        // (Unverändert)
         function getTodayNormalized() {
             const today = new Date();
             today.setHours(0, 0, 0, 0); 
             return today;
         }
-
         function getFutureDates() {
             const todayNormalized = getTodayNormalized().getTime();
             const futureDates = [];
-
             specialDates.forEach(d => {
                 if (d.isGroupSeparator) {
                     futureDates.push(d);
                     return;
                 }
-
-                // Wichtig: 'T00:00:00' hinzufügen, um Zeitzonenprobleme zu minimieren
                 const slotDate = new Date(d.date + 'T00:00:00'); 
-                
                 if (slotDate.getTime() >= todayNormalized) {
                     futureDates.push(d);
                 }
             });
-
             return futureDates;
         }
-
-        /**
-         * Erstellt das HTML für die Datums-Auswahloptionen aus den ZUKÜNFTIGEN Daten.
-         */
         function createDateOptions() {
             let options = '<option value="" disabled selected>Datum auswählen...</option>';
             const futureDates = getFutureDates(); 
-
             futureDates.forEach(d => {
                 if (d.isGroupSeparator) {
-                    // Visueller Trenner
                     options += `<option value="" disabled 
-                                class="bg-gray-100 text-center font-bold text-gray-700 
-                                border-t border-b border-gray-400 py-1 select-none">
+                                 class="bg-gray-100 text-center font-bold text-gray-700 
+                                 border-t border-b border-gray-400 py-1 select-none">
                                     &mdash; ${d.label.toUpperCase()} &mdash;
                                 </option>`;
                 } else {
                     const dateObj = new Date(d.date + 'T00:00:00');
                     const weekday = dateObj.toLocaleDateString('de-DE', { weekday: 'short' }); 
                     const displayLabel = `${weekday} ${d.label}`;
-
-                    // Das 'value' ist das YYYY-MM-DD Format
                     options += `<option value="${d.date}">${displayLabel}</option>`;
-
                 }
             });
             return options;
         }
-
         function populateDateDropdown() {
             const optionsHtml = createDateOptions();
             shiftDateInput.innerHTML = optionsHtml;
         }
 
-
         // --- FAHRER LOGIK ---
-
+        // (Unverändert)
         function populateDriverDropdown() {
             driverSelect.innerHTML = '<option value="" disabled selected>Fahrer auswählen...</option>';
-            
             data.drivers.sort();
-
             if (data.drivers.length > 0) {
                 data.drivers.forEach(name => {
                     const option = document.createElement('option');
@@ -543,66 +487,50 @@
                 driverSelect.disabled = true;
             }
         }
-
-        /**
-         * Füllt das Dropdown-Menü zur Auswahl eines Fahrers zum Löschen.
-         */
         function populateDriverDeletionDropdown() {
             driverSelectForDeletion.innerHTML = '<option value="" disabled selected>Wählen Sie einen Fahrer...</option>';
             deleteDriverBtn.disabled = true;
-
             if (data.drivers.length === 0) {
                 noDriversMessage.classList.remove('hidden');
                 return;
             }
             noDriversMessage.classList.add('hidden');
             data.drivers.sort();
-
             data.drivers.forEach(name => {
                 const option = document.createElement('option');
                 option.value = name;
                 option.textContent = name;
                 driverSelectForDeletion.appendChild(option);
             });
-            
-            // Aktiviert den Lösch-Button, wenn eine Auswahl getroffen wird
             driverSelectForDeletion.onchange = () => {
                 deleteDriverBtn.disabled = !driverSelectForDeletion.value;
             };
         }
-
-
         window.addDriver = function() {
             const name = newDriverInput.value.trim();
             if (!name) {
                 showAlert('Fehler', 'Bitte geben Sie einen Namen ein.');
                 return;
             }
-
             if (data.drivers.includes(name)) {
                 showAlert('Info', `Fahrer ${name} ist bereits eingetragen.`);
                 return;
             }
-
             data.drivers.push(name);
             saveLocalData();
             populateDriverDropdown();
             populateDriverDeletionDropdown(); 
-
             newDriverInput.value = '';
             showAlert('Erfolg', `Fahrer **${name}** hinzugefügt.`);
         }
-        
         window.initiateDriverDeletion = function() {
             const name = driverSelectForDeletion.value;
             if (name) {
                 confirmAndDeleteDriver(name);
             }
         }
-
         window.confirmAndDeleteDriver = function(name) {
             const shiftsFound = data.shifts.filter(s => s.driver === name).length;
-
             if (shiftsFound > 0) {
                 showAlert(
                     'Fehler: Schichten vorhanden',
@@ -618,12 +546,9 @@
                 );
             }
         }
-
         window.deleteDriver = function(name) {
             const initialLength = data.drivers.length;
-            
             data.drivers = data.drivers.filter(d => d !== name);
-
             if (data.drivers.length < initialLength) {
                 saveLocalData();
                 populateDriverDropdown();
@@ -634,9 +559,8 @@
             }
         }
 
-
         // --- SCHICHT ANLEGEN LOGIK (Batch-Erstellung) ---
-
+        // (Unverändert)
         window.addPendingShift = function() {
             const driver = driverSelect.value;
             const driverName = driverSelect.options[driverSelect.selectedIndex] ? driverSelect.options[driverSelect.selectedIndex].text : driver;
@@ -644,23 +568,18 @@
             const startTime = startTimeInput.value;
             const endTime = endTimeInput.value;
             const description = descriptionInput.value.trim();
-
             if (!driver || !date || !startTime || !endTime) {
                 showAlert('Fehler', "Bitte wählen Sie einen Fahrer und geben Sie Datum, Startzeit und Endzeit ein.");
                 return;
             }
-
             const newShift = { driver: driverName, date, startTime, endTime, description };
             pendingShifts.push(newShift);
             updatePendingList();
-
-            // Nur Zeit und Beschreibung zurücksetzen
             startTimeInput.value = '';
             endTimeInput.value = '';
             descriptionInput.value = '';
             startTimeInput.focus();
         }
-
         function updatePendingList() {
             pendingShiftsList.innerHTML = '';
             if (pendingShifts.length === 0) {
@@ -668,10 +587,8 @@
                 submitBtn.disabled = true;
                 return;
             }
-
             pendingShiftsContainer.classList.remove('hidden');
             submitBtn.disabled = false;
-
             pendingShifts.forEach((shift, index) => {
                 const li = document.createElement('li');
                 li.className = 'flex justify-between items-center p-3 bg-gray-50 border border-gray-200 rounded-lg';
@@ -687,12 +604,10 @@
                 pendingShiftsList.appendChild(li);
             });
         }
-
         window.removePendingShift = function(index) {
             pendingShifts.splice(index, 1);
             updatePendingList();
         }
-
         function resetForm() {
             driverSelect.value = '';
             shiftDateInput.value = ''; 
@@ -703,90 +618,242 @@
             updatePendingList();
         }
 
+        // --- STATISTIK-DIAGRAMM LOGIK (KORRIGIERT FÜR NEUE ZEITFENSTER) ---
+        
+        /**
+         * Prüft, ob ein Zeitintervall (shiftStartHour, shiftEndHour) ein Zielintervall (targetStart, targetEnd) überlappt.
+         * Die Zeiten sind 0-23 (Stunden, volle Stunde). Wenn end < start, wird von einem Tag auf den nächsten geschlossen.
+         * @param {number} shiftStartHour - Startstunde der Schicht (0-23)
+         * @param {number} shiftEndHour - Endstunde der Schicht (0-23)
+         * @param {number} targetStart - Startstunde des Ziel-Zeitfensters (0-23)
+         * @param {number} targetEnd - Endstunde des Ziel-Zeitfensters (0-23)
+         * @returns {boolean} True, wenn eine Überlappung vorliegt.
+         */
+        function isOverlap(shiftStartHour, shiftEndHour, targetStart, targetEnd) {
+            let s = shiftStartHour;
+            let e = shiftEndHour;
+            let ts = targetStart;
+            let te = targetEnd;
+
+            // Logik für Schichten/Zeitfenster, die über Mitternacht gehen (e < s oder te < ts)
+            
+            // Fall 1: Zielintervall geht über Mitternacht (Nachtschicht 16:00 - 04:00)
+            if (ts > te) {
+                // Teile das Zielintervall in zwei Teile: [ts, 24] und [0, te]
+                return isOverlap(s, e, ts, 24) || isOverlap(s, e, 0, te);
+            }
+            
+            // Fall 2: Schicht geht über Mitternacht (z.B. 22:00 - 06:00)
+            if (s > e) {
+                // Teile die Schicht in zwei Teile: [s, 24] und [0, e]
+                return isOverlap(s, 24, ts, te) || isOverlap(0, e, ts, te);
+            }
+            
+            // Fall 3: Normale Überlappungsprüfung (keine Mitternachtsüberschreitung in Schicht ODER Ziel)
+            // Die Endzeit des einen Intervalls muss größer sein als die Startzeit des anderen,
+            // UND die Startzeit des einen Intervalls muss kleiner sein als die Endzeit des anderen.
+            return s < te && e > ts;
+        }
+
+        function renderStatisticsChart() {
+            const statsChartCanvas = document.getElementById('driverStatsChart');
+            const noStatsMessage = document.getElementById('no-stats-message');
+
+            if (!statsChartCanvas) return; 
+
+            // 1. Daten aggregieren
+            const stats = {}; 
+            
+            // NEUE DEFINITION DER ZEITFENSTER (Volle Stunden, exklusive Endstunde)
+            const SHIFT_WINDOWS = {
+                early: { label: 'Früh (06:00-16:00)', start: 6, end: 16 },    
+                late: { label: 'Spät (10:00-20:00)', start: 10, end: 20 },     
+                night: { label: 'Nacht (16:00-04:00)', start: 16, end: 4 }     
+            };
+
+            data.shifts.forEach(shift => {
+                const date = shift.date;
+
+                if (!stats[date]) {
+                    stats[date] = { early: 0, late: 0, night: 0 };
+                }
+
+                if (!shift.startTime || !shift.endTime) {
+                    return; // Schichten ohne gültige Zeiten ignorieren
+                }
+                
+                // Konvertiere Start- und Endzeit in Stunden für die Logik
+                const startHour = parseInt(shift.startTime.split(':')[0]);
+                const endHour = parseInt(shift.endTime.split(':')[0]);
+                
+                if (isNaN(startHour) || isNaN(endHour)) {
+                    return; // Ignoriere Schichten mit ungültigen Zahlen
+                }
+
+                // Zähle die Schicht für jedes Fenster, das sie abdeckt
+                if (isOverlap(startHour, endHour, SHIFT_WINDOWS.early.start, SHIFT_WINDOWS.early.end)) {
+                    stats[date].early++;
+                } 
+                if (isOverlap(startHour, endHour, SHIFT_WINDOWS.late.start, SHIFT_WINDOWS.late.end)) {
+                    stats[date].late++;
+                } 
+                if (isOverlap(startHour, endHour, SHIFT_WINDOWS.night.start, SHIFT_WINDOWS.night.end)) {
+                    stats[date].night++;
+                }
+            });
+
+            // 2. Daten für Chart.js vorbereiten
+            const sortedDates = Object.keys(stats).sort();
+
+            if (sortedDates.length === 0) {
+                noStatsMessage.classList.remove('hidden');
+                statsChartCanvas.classList.add('hidden');
+                if (myChart) {
+                    myChart.destroy(); 
+                    myChart = null;
+                }
+                return; 
+            }
+
+            noStatsMessage.classList.add('hidden');
+            statsChartCanvas.classList.remove('hidden');
+
+            const labels = sortedDates.map(date => formatDateDE(date)); 
+            const earlyData = sortedDates.map(date => stats[date].early);
+            const lateData = sortedDates.map(date => stats[date].late);
+            const nightData = sortedDates.map(date => stats[date].night);
+
+            // 3. Chart rendern (oder updaten)
+            const ctx = statsChartCanvas.getContext('2d');
+
+            const chartDataSets = [
+                {
+                    label: SHIFT_WINDOWS.early.label,
+                    data: earlyData,
+                    backgroundColor: '#34d399', // Emerald-400
+                },
+                {
+                    label: SHIFT_WINDOWS.late.label,
+                    data: lateData,
+                    backgroundColor: '#fbbf24', // Amber-400
+                },
+                {
+                    label: SHIFT_WINDOWS.night.label,
+                    data: nightData,
+                    backgroundColor: '#60a5fa', // Blue-400
+                }
+            ];
+
+            if (myChart) {
+                // Diagramm nur aktualisieren
+                myChart.data.labels = labels;
+                myChart.data.datasets = chartDataSets;
+                myChart.update();
+            } else {
+                // Diagramm neu erstellen
+                myChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: chartDataSets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                stacked: false, 
+                            },
+                            y: {
+                                stacked: false, 
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1 
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Anzahl Fahrer pro Tag & Zeitfenster (Überlappungen berücksichtigt)',
+                                font: { size: 16 }
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    footer: (tooltipItems) => {
+                                        // Summe aller Anwesenheiten (Zählungen) an diesem Tag
+                                        let sum = 0;
+                                        tooltipItems.forEach(item => {
+                                            sum += item.parsed.y;
+                                        });
+                                        return 'Gesamte Anwesenheit (Summe Balken): ' + sum;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+
+        // --- SCHICHTEN SPEICHERN (BATCH) ---
+        // (Unverändert, ruft renderStatisticsChart() auf)
         window.submitPendingShifts = function() {
             if (pendingShifts.length === 0) {
                 showAlert('Info', "Es sind keine Schichten zum Anlegen vorhanden.");
                 return;
             }
-            
-            // UUIDs hinzufügen
             const newShifts = pendingShifts.map(shift => ({
                 id: generateUUID(), 
-                ...shift 
-            }));
-
-            // Schichten zur Hauptliste hinzufügen
+                ...shift
+             }));
             data.shifts.push(...newShifts);
-            
-            // Speichern und UI neu rendern
             saveLocalData();
-            loadAndRenderShifts();
-
+            loadAndRenderShifts(); 
+            renderStatisticsChart(); // Statistik auch aktualisieren
             const count = pendingShifts.length;
-            
-            // Formular zurücksetzen
             resetForm(); 
-            
             showAlert('Erfolg', `${count} Schicht(en) erfolgreich angelegt.`);
         }
 
         // --- EINSATZÜBERSICHT LOGIK ---
-
+        // (Unverändert)
         function loadAndRenderShifts() {
             const shifts = data.shifts;
-
-            // Sortierung nach Datum und dann Startzeit
             shifts.sort((a, b) => {
                 const dateTimeA = `${a.date}T${a.startTime}`;
                 const dateTimeB = `${b.date}T${b.startTime}`;
-                
-                if (dateTimeA < dateTimeB) {
-                    return -1;
-                }
-                if (dateTimeA > dateTimeB) {
-                    return 1;
-                }
+                if (dateTimeA < dateTimeB) { return -1; }
+                if (dateTimeA > dateTimeB) { return 1; }
                 return 0;
             });
-
             renderShifts(shifts);
         }
-
         function renderShifts(shifts) {
             shiftsTableBody.innerHTML = '';
-            
             if (!shifts || shifts.length === 0) {
                 noShiftsMessage.classList.remove('hidden');
                 return;
             }
-            
             noShiftsMessage.classList.add('hidden');
-
             shifts.forEach(shift => {
                 const row = shiftsTableBody.insertRow();
                 row.className = 'hover:bg-gray-100 transition duration-150';
-
-                // Fahrer (Sticky Column) - KORRIGIERT: Klassen direkt auf die Zelle (<td>)
                 const driverCell = row.insertCell();
                 driverCell.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 sticky-col';
                 driverCell.textContent = shift.driver || 'N/A';
-
-                // Datum (Korrekt formatiert)
                 row.insertCell().textContent = formatDateDE(shift.date);
-                
-                // Start - Ende Zeit
-                row.insertCell().textContent = `${shift.startTime || '--'} - ${shift.endTime || '--'}`;
-
-                // Bemerkungen/Beschreibung
+                row.insertCell().textContent = `${shift.startTime || '--'} - ${shift.endTime || '--'}`; 
                 const descCell = row.insertCell();
                 descCell.className = 'px-6 py-4 text-sm text-gray-500 truncate max-w-xs';
                 descCell.textContent = shift.description || '-';
-
-                // Aktionen
                 const actionsCell = row.insertCell();
                 actionsCell.className = 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium';
                 actionsCell.innerHTML = `
-                    <button onclick="openEditModal('${shift.id}', '${shift.driver}', '${shift.date}', '${shift.startTime}', '${shift.endTime}', \`${shift.description || ''}\`)"
+                    <button onclick="openEditModal('${shift.id}', '${shift.driver}', '${shift.date}', '${shift.startTime || ''}', '${shift.endTime || ''}', \`${shift.description || ''}\`)"
                             class="text-teal-600 hover:text-teal-900 font-semibold mr-3">
                         Bearbeiten
                     </button>
@@ -797,20 +864,18 @@
                 `;
             });
         }
-        
+                
         // --- BEARBEITEN / LÖSCHEN SCHICHTEN FUNKTIONEN ---
-
+        // (Unverändert, rufen renderStatisticsChart() auf)
         window.openEditModal = function(id, driver, date, start, end, description) {
             document.getElementById('edit-shift-id').value = id;
             document.getElementById('edit-driver').value = driver;
             document.getElementById('edit-date').value = date;
-            document.getElementById('edit-start-time').value = start;
-            document.getElementById('edit-end-time').value = end;
+            document.getElementById('edit-start-time').value = start; 
+            document.getElementById('edit-end-time').value = end; 
             document.getElementById('edit-description').value = description.trim(); 
-
             editModal.classList.remove('hidden');
         }
-
         window.saveEditedShift = function() {
             const id = document.getElementById('edit-shift-id').value;
             const newDriver = document.getElementById('edit-driver').value.trim();
@@ -818,17 +883,13 @@
             const newStart = document.getElementById('edit-start-time').value;
             const newEnd = document.getElementById('edit-end-time').value;
             const newDescription = document.getElementById('edit-description').value.trim();
-
             if (!newDriver || !newDate || !newStart || !newEnd) {
                 hideEditModal();
-                showAlert('Fehler', "Bitte füllen Sie alle Pflichtfelder aus (Fahrer, Datum, Start-/Endzeit).");
+                showAlert('Fehler', "Bitte füllen Sie alle Pflichtfelder aus (Fahrer, Datum, Start-/Endzeit). Die Statistik benötigt die Zeiten.");
                 return;
             }
-
             hideEditModal();
-            
             const index = data.shifts.findIndex(s => s.id === id);
-
             if (index > -1) {
                 data.shifts[index] = {
                     ...data.shifts[index],
@@ -838,24 +899,20 @@
                     endTime: newEnd,
                     description: newDescription,
                 };
-                
-                // Fügt den neuen/geänderten Fahrernamen automatisch zur Liste hinzu
                 if (!data.drivers.includes(newDriver)) {
                     data.drivers.push(newDriver);
                     populateDriverDropdown();
                     populateDriverDeletionDropdown();
                 }
-
                 saveLocalData();
                 loadAndRenderShifts();
+                renderStatisticsChart(); // Statistik aktualisieren
                 showAlert('Erfolg', 'Schicht erfolgreich bearbeitet.');
             } else {
                  showAlert('Fehler', "Schicht nicht gefunden.");
             }
         }
-
         window.confirmAndDelete = function(id, driverName, date) {
-            // Korrekte Datumsausgabe im Lösch-Dialog
             showAlert(
                 'Löschen bestätigen',
                 `Sind Sie sicher, dass Sie die Schicht für <strong>${driverName}</strong> am ${formatDateDE(date)} unwiderruflich löschen möchten?`,
@@ -863,30 +920,29 @@
                 () => deleteShift(id)
             );
         }
-
         function deleteShift(id) {
             const initialLength = data.shifts.length;
-            
             data.shifts = data.shifts.filter(s => s.id !== id);
-
             if (data.shifts.length < initialLength) {
                 saveLocalData();
                 loadAndRenderShifts();
+                renderStatisticsChart(); // Statistik aktualisieren
                 showAlert('Erfolg', 'Schicht erfolgreich gelöscht.');
             } else {
                  showAlert('Fehler', "Schicht konnte nicht gelöscht werden.");
             }
         }
 
-
         // --- INITIALISIERUNG ---
+        // (Unverändert, ruft renderStatisticsChart() auf)
         window.onload = function() {
             loadLocalData();
             populateDriverDropdown();
             populateDateDropdown(); 
             populateDriverDeletionDropdown(); 
             loadAndRenderShifts();
-            
+            renderStatisticsChart(); // Statistik initial laden
+                        
             if (data.drivers.length === 0) {
                  showAlert('Willkommen', 'Dies ist die lokale Version des Planers. Fügen Sie zuerst einen Fahrer hinzu, um zu starten.');
             }
@@ -894,12 +950,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
