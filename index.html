@@ -61,36 +61,55 @@
             height: auto;
         }
         
-        /* --- KORRIGIERTE DRUCK-OPTIMIERUNG (@media print) --- */
+        /* --- STRENGE DRUCK-OPTIMIERUNG (@media print) --- */
         @media print {
             
-            /* 1. Alles, was nicht gedruckt werden soll, explizit ausblenden */
-            /* Die Karten "Fahrer hinzufügen" (2. Child) und "Schicht anlegen" (3. Child) ausblenden */
-            .card:nth-child(2), 
-            .card:nth-child(3), 
-            /* Alle Modals, Buttons und Aktionen ausblenden */
-            #edit-modal, 
-            #alert-modal, 
+            /* 1. Alles in der Hauptseite standardmäßig ausblenden */
+            body > * {
+                display: none !important;
+                visibility: hidden !important;
+            }
+            
+            /* 2. Den Hauptcontainer wieder anzeigen, damit wir die Kinder darin steuern können */
+            .max-w-7xl, 
+            .max-w-7xl * {
+                display: block !important;
+                visibility: visible !important;
+            }
+            
+            /* 3. Alle Karten (`.card`) im Hauptcontainer standardmäßig ausblenden */
+            .max-w-7xl > .card {
+                display: none !important;
+                visibility: hidden !important;
+            }
+
+            /* 4. NUR die zwei letzten Karten (Einsatzübersicht & Statistik) wieder einblenden */
+            /* Einsatzübersicht */
+            .card:nth-last-child(2) {
+                display: block !important;
+                visibility: visible !important;
+            }
+            /* Statistik */
+            .card:last-child {
+                display: block !important;
+                visibility: visible !important;
+            }
+
+            /* 5. Header/Titel des Planers ausblenden */
+            header,
+            /* Buttons und Aktionen ausblenden */
             .print\:hidden,
             .px-6.py-4.whitespace-nowrap:last-child, /* Aktionen-Spalte Inhalt */
-            .px-6.py-3:last-child /* Aktionen-Spalte Überschrift */
+            .px-6.py-3:last-child, /* Aktionen-Spalte Überschrift */
+            /* Modals und Popups ausblenden */
+            #edit-modal, 
+            #alert-modal
             {
                 display: none !important;
                 visibility: hidden !important;
             }
 
-            /* 2. Nur die gewünschten Container sichtbar schalten (muss spezifischer sein) */
-            .max-w-7xl, 
-            header,
-            .card:nth-last-child(2), /* Einsatzübersicht (Tabelle) */
-            .card:last-child, /* Statistik (Diagramm) */
-            .card:last-child * /* Inhalt der Statistik */
-            {
-                display: block !important;
-                visibility: visible !important;
-            }
-
-            /* 3. Den Chart-Canvas verstecken und das Chart-Bild anzeigen */
+            /* 6. Chart-Canvas verstecken und Chart-Bild anzeigen */
             #driverStatsChart {
                 display: none !important; 
             }
@@ -101,7 +120,7 @@
                 margin-top: 1rem;
             }
             
-            /* 4. Allgemeine Druck-Stile */
+            /* 7. Allgemeine Druck-Stile */
             body {
                 background-color: white !important;
                 padding: 0 !important;
