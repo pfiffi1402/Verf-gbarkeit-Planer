@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
-        /* (Ihr CSS bleibt unverändert) */
+        /* (Ihr allgemeines CSS bleibt unverändert) */
         :root {
             --primary-color: #0d9488; /* Teal-700 */
         }
@@ -49,23 +49,59 @@
             background-color: white;
             box-shadow: 2px 0 3px -2px rgba(0, 0, 0, 0.1);
         }
-                
-        /* --- Druck-Optimierung (@media print) --- */
+        
+        /* Das eigentliche Canvas im normalen Modus anzeigen */
+        #driverStatsChart {
+             display: block; 
+        }
+        /* Das statische Bild, das im normalen Modus ausgeblendet wird */
+        #chart-print-placeholder {
+            display: none; 
+            max-width: 100%;
+            height: auto;
+        }
+        
+        /* --- KORRIGIERTE DRUCK-OPTIMIERUNG (@media print) --- */
         @media print {
-            header, 
-            .card:not(:nth-last-child(2)),
+            
+            /* 1. Alles, was nicht gedruckt werden soll, explizit ausblenden */
+            /* Die Karten "Fahrer hinzufügen" (2. Child) und "Schicht anlegen" (3. Child) ausblenden */
+            .card:nth-child(2), 
+            .card:nth-child(3), 
+            /* Alle Modals, Buttons und Aktionen ausblenden */
             #edit-modal, 
             #alert-modal, 
-            .btn-primary,
-            #submit-shift-btn,
-            #add-shift-btn,
-            .px-6.py-4.whitespace-nowrap:last-child, /* Aktionen-Spalte */
-            .px-6.py-3:last-child, /* Aktionen-Spaltenüberschrift */
             .print\:hidden,
-            .card:last-child /* Statistik-Karte */
+            .px-6.py-4.whitespace-nowrap:last-child, /* Aktionen-Spalte Inhalt */
+            .px-6.py-3:last-child /* Aktionen-Spalte Überschrift */
             {
                 display: none !important;
+                visibility: hidden !important;
             }
+
+            /* 2. Nur die gewünschten Container sichtbar schalten (muss spezifischer sein) */
+            .max-w-7xl, 
+            header,
+            .card:nth-last-child(2), /* Einsatzübersicht (Tabelle) */
+            .card:last-child, /* Statistik (Diagramm) */
+            .card:last-child * /* Inhalt der Statistik */
+            {
+                display: block !important;
+                visibility: visible !important;
+            }
+
+            /* 3. Den Chart-Canvas verstecken und das Chart-Bild anzeigen */
+            #driverStatsChart {
+                display: none !important; 
+            }
+            #chart-print-placeholder {
+                display: block !important; /* Das statische Bild anzeigen */
+                width: 100%;
+                height: auto;
+                margin-top: 1rem;
+            }
+            
+            /* 4. Allgemeine Druck-Stile */
             body {
                 background-color: white !important;
                 padding: 0 !important;
@@ -76,7 +112,14 @@
                 box-shadow: none !important;
                 border: none !important;
                 padding: 0 !important;
-                margin: 0 !important;
+                margin: 1rem 0 !important; 
+            }
+            .card h2 {
+                font-size: 16pt;
+                text-align: left;
+                margin-bottom: 10px;
+                padding-bottom: 5px;
+                border-bottom: 1px solid #000;
             }
             #overview-container {
                 overflow-x: visible !important; 
@@ -92,13 +135,6 @@
             .sticky-col {
                 position: static !important; 
                 box-shadow: none !important;
-            }
-            .card:nth-last-child(2) h2 {
-                font-size: 18pt;
-                text-align: center;
-                margin-bottom: 10px;
-                padding-bottom: 5px;
-                border-bottom: 2px solid #000;
             }
             @page {
                 size: A4;
@@ -259,10 +295,10 @@
             <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Einsatzübersicht</h2>
             <div class="flex justify-end mb-4 print:hidden">
                 <button 
-                    onclick="window.print()" 
+                    onclick="printOverviewAndChart()" 
                     class="px-6 py-2 bg-gray-500 text-white font-semibold rounded-lg shadow-md hover:bg-gray-600 transition duration-150"
                 >
-                    <span class="text-lg">Einsatzliste drucken</span>
+                    <span class="text-lg">Liste & Statistik drucken</span>
                 </button>
             </div>
             <div id="overview-container" class="overflow-x-auto relative">
@@ -273,7 +309,7 @@
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Datum</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start - Ende</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bemerkungen</th>
-                            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aktionen</th>
+                            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aktionen</th> 
                         </tr>
                     </thead>
                     <tbody id="shifts-table-body" class="bg-white divide-y divide-gray-200">
@@ -287,6 +323,7 @@
             <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">📊 Statistik: Fahrer pro Tag & Zeitfenster</h2>
             <div class="relative h-[400px] w-full">
                 <canvas id="driverStatsChart"></canvas>
+                <img id="chart-print-placeholder" alt="Statistik-Diagramm für den Druck">
             </div>
             <p id="no-stats-message" class="p-4 text-center text-gray-500 hidden">Noch keine Schichtdaten für die Statistik vorhanden.</p>
         </div>
@@ -339,7 +376,6 @@
         ];
                 
         // --- DOM-ELEMENTE ---
-        // (Unverändert)
         const newDriverInput = document.getElementById('new-driver-name-input');
         const driverSelect = document.getElementById('driver-select');
         const shiftDateInput = document.getElementById('shift-date-select');
@@ -360,9 +396,10 @@
         const driverSelectForDeletion = document.getElementById('driver-select-for-deletion');
         const deleteDriverBtn = document.getElementById('delete-driver-btn');
         const noDriversMessage = document.getElementById('no-drivers-message');
+        const chartPrintPlaceholder = document.getElementById('chart-print-placeholder');
+
 
         // --- LOCAL STORAGE HILFSFUNKTIONEN ---
-        // (Unverändert)
         function loadLocalData() {
             try {
                 const storedData = localStorage.getItem(STORAGE_KEY);
@@ -386,7 +423,6 @@
         }
         
         // --- ALLGEMEINE HILFSFUNKTIONEN ---
-        // (Unverändert)
         function generateUUID() {
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
                 var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
@@ -423,9 +459,27 @@
             const [year, month, day] = dateString.split('-');
             return `${day}.${month}.${year}`;
         }
+        
+        // EINZIGE DRUCK-FUNKTION
+        window.printOverviewAndChart = function() {
+            // 1. Chart.js Diagramm als Daten-URL (PNG-Bild) exportieren, FALLS vorhanden
+            if (myChart && data.shifts.length > 0) {
+                const chartImage = myChart.toBase64Image();
+                chartPrintPlaceholder.src = chartImage;
+            } else {
+                chartPrintPlaceholder.src = '';
+            }
 
-        // --- DATUM LOGIK ---
-        // (Unverändert)
+            // 2. Druckdialog öffnen (CSS regelt, was sichtbar ist)
+            window.print();
+
+            // 3. Aufräumen: Platzhalter leeren
+            setTimeout(() => {
+                chartPrintPlaceholder.src = ''; 
+            }, 500);
+        }
+
+        // --- DATUM LOGIK (Unverändert) ---
         function getTodayNormalized() {
             const today = new Date();
             today.setHours(0, 0, 0, 0); 
@@ -470,8 +524,7 @@
             shiftDateInput.innerHTML = optionsHtml;
         }
 
-        // --- FAHRER LOGIK ---
-        // (Unverändert)
+        // --- FAHRER LOGIK (Unverändert) ---
         function populateDriverDropdown() {
             driverSelect.innerHTML = '<option value="" disabled selected>Fahrer auswählen...</option>';
             data.drivers.sort();
@@ -559,8 +612,7 @@
             }
         }
 
-        // --- SCHICHT ANLEGEN LOGIK (Batch-Erstellung) ---
-        // (Unverändert)
+        // --- SCHICHT ANLEGEN LOGIK (Unverändert) ---
         window.addPendingShift = function() {
             const driver = driverSelect.value;
             const driverName = driverSelect.options[driverSelect.selectedIndex] ? driverSelect.options[driverSelect.selectedIndex].text : driver;
@@ -618,16 +670,11 @@
             updatePendingList();
         }
 
-        // --- STATISTIK-DIAGRAMM LOGIK (KORRIGIERT FÜR NEUE ZEITFENSTER) ---
+        // --- STATISTIK-DIAGRAMM LOGIK (Unverändert) ---
         
         /**
          * Prüft, ob ein Zeitintervall (shiftStartHour, shiftEndHour) ein Zielintervall (targetStart, targetEnd) überlappt.
          * Die Zeiten sind 0-23 (Stunden, volle Stunde). Wenn end < start, wird von einem Tag auf den nächsten geschlossen.
-         * @param {number} shiftStartHour - Startstunde der Schicht (0-23)
-         * @param {number} shiftEndHour - Endstunde der Schicht (0-23)
-         * @param {number} targetStart - Startstunde des Ziel-Zeitfensters (0-23)
-         * @param {number} targetEnd - Endstunde des Ziel-Zeitfensters (0-23)
-         * @returns {boolean} True, wenn eine Überlappung vorliegt.
          */
         function isOverlap(shiftStartHour, shiftEndHour, targetStart, targetEnd) {
             let s = shiftStartHour;
@@ -635,8 +682,6 @@
             let ts = targetStart;
             let te = targetEnd;
 
-            // Logik für Schichten/Zeitfenster, die über Mitternacht gehen (e < s oder te < ts)
-            
             // Fall 1: Zielintervall geht über Mitternacht (Nachtschicht 16:00 - 04:00)
             if (ts > te) {
                 // Teile das Zielintervall in zwei Teile: [ts, 24] und [0, te]
@@ -649,9 +694,7 @@
                 return isOverlap(s, 24, ts, te) || isOverlap(0, e, ts, te);
             }
             
-            // Fall 3: Normale Überlappungsprüfung (keine Mitternachtsüberschreitung in Schicht ODER Ziel)
-            // Die Endzeit des einen Intervalls muss größer sein als die Startzeit des anderen,
-            // UND die Startzeit des einen Intervalls muss kleiner sein als die Endzeit des anderen.
+            // Fall 3: Normale Überlappungsprüfung
             return s < te && e > ts;
         }
 
@@ -664,7 +707,7 @@
             // 1. Daten aggregieren
             const stats = {}; 
             
-            // NEUE DEFINITION DER ZEITFENSTER (Volle Stunden, exklusive Endstunde)
+            // DEFINITION DER ZEITFENSTER
             const SHIFT_WINDOWS = {
                 early: { label: 'Früh (06:00-16:00)', start: 6, end: 16 },    
                 late: { label: 'Spät (10:00-20:00)', start: 10, end: 20 },     
@@ -679,15 +722,14 @@
                 }
 
                 if (!shift.startTime || !shift.endTime) {
-                    return; // Schichten ohne gültige Zeiten ignorieren
+                    return; 
                 }
                 
-                // Konvertiere Start- und Endzeit in Stunden für die Logik
                 const startHour = parseInt(shift.startTime.split(':')[0]);
                 const endHour = parseInt(shift.endTime.split(':')[0]);
                 
                 if (isNaN(startHour) || isNaN(endHour)) {
-                    return; // Ignoriere Schichten mit ungültigen Zahlen
+                    return; 
                 }
 
                 // Zähle die Schicht für jedes Fenster, das sie abdeckt
@@ -800,7 +842,6 @@
 
 
         // --- SCHICHTEN SPEICHERN (BATCH) ---
-        // (Unverändert, ruft renderStatisticsChart() auf)
         window.submitPendingShifts = function() {
             if (pendingShifts.length === 0) {
                 showAlert('Info', "Es sind keine Schichten zum Anlegen vorhanden.");
@@ -813,14 +854,13 @@
             data.shifts.push(...newShifts);
             saveLocalData();
             loadAndRenderShifts(); 
-            renderStatisticsChart(); // Statistik auch aktualisieren
+            renderStatisticsChart(); 
             const count = pendingShifts.length;
             resetForm(); 
             showAlert('Erfolg', `${count} Schicht(en) erfolgreich angelegt.`);
         }
 
-        // --- EINSATZÜBERSICHT LOGIK ---
-        // (Unverändert)
+        // --- EINSATZÜBERSICHT LOGIK (Unverändert) ---
         function loadAndRenderShifts() {
             const shifts = data.shifts;
             shifts.sort((a, b) => {
@@ -852,6 +892,7 @@
                 descCell.textContent = shift.description || '-';
                 const actionsCell = row.insertCell();
                 actionsCell.className = 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium';
+                // Die Aktionen-Buttons bleiben hier im HTML-Code, werden aber per CSS im Druck ausgeblendet
                 actionsCell.innerHTML = `
                     <button onclick="openEditModal('${shift.id}', '${shift.driver}', '${shift.date}', '${shift.startTime || ''}', '${shift.endTime || ''}', \`${shift.description || ''}\`)"
                             class="text-teal-600 hover:text-teal-900 font-semibold mr-3">
@@ -865,8 +906,7 @@
             });
         }
                 
-        // --- BEARBEITEN / LÖSCHEN SCHICHTEN FUNKTIONEN ---
-        // (Unverändert, rufen renderStatisticsChart() auf)
+        // --- BEARBEITEN / LÖSCHEN SCHICHTEN FUNKTIONEN (Unverändert) ---
         window.openEditModal = function(id, driver, date, start, end, description) {
             document.getElementById('edit-shift-id').value = id;
             document.getElementById('edit-driver').value = driver;
@@ -906,7 +946,7 @@
                 }
                 saveLocalData();
                 loadAndRenderShifts();
-                renderStatisticsChart(); // Statistik aktualisieren
+                renderStatisticsChart(); 
                 showAlert('Erfolg', 'Schicht erfolgreich bearbeitet.');
             } else {
                  showAlert('Fehler', "Schicht nicht gefunden.");
@@ -926,7 +966,7 @@
             if (data.shifts.length < initialLength) {
                 saveLocalData();
                 loadAndRenderShifts();
-                renderStatisticsChart(); // Statistik aktualisieren
+                renderStatisticsChart(); 
                 showAlert('Erfolg', 'Schicht erfolgreich gelöscht.');
             } else {
                  showAlert('Fehler', "Schicht konnte nicht gelöscht werden.");
@@ -934,14 +974,13 @@
         }
 
         // --- INITIALISIERUNG ---
-        // (Unverändert, ruft renderStatisticsChart() auf)
         window.onload = function() {
             loadLocalData();
             populateDriverDropdown();
             populateDateDropdown(); 
             populateDriverDeletionDropdown(); 
             loadAndRenderShifts();
-            renderStatisticsChart(); // Statistik initial laden
+            renderStatisticsChart(); 
                         
             if (data.drivers.length === 0) {
                  showAlert('Willkommen', 'Dies ist die lokale Version des Planers. Fügen Sie zuerst einen Fahrer hinzu, um zu starten.');
