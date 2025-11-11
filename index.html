@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fahrer Einsatzplaner - Schichten (Lokal)</title>
+    <title>Einsatzplaner-Feiertage</title>
     <!-- Tailwind CSS laden -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -55,8 +55,8 @@
 
     <div class="max-w-7xl mx-auto space-y-8">
         <header class="text-center">
-            <h1 class="text-4xl font-extrabold text-gray-900 mb-2">Fahrer Einsatzplaner (Lokale Speicherung)</h1>
-            <p class="text-gray-600">Alle Daten werden direkt in Ihrem Browser gespeichert (localStorage).</p>
+            <h1 class="text-4xl font-extrabold text-gray-900 mb-2">Einsatzplaner-Feiertage</h1>
+            <p class="text-gray-600">Alle Daten werden direkt in Ihrem Browser gespeichert.</p>
         </header>
 
         <!-- Modaler Dialog für Fehlermeldungen / Bestätigungen -->
@@ -105,13 +105,27 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Modaler Dialog für Fahrerverwaltung -->
+        <div id="driver-management-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-40">
+            <div class="bg-white p-6 rounded-xl shadow-2xl max-w-lg w-full">
+                <h3 class="text-xl font-bold text-teal-700 mb-6">Fahrerliste verwalten</h3>
+                <ul id="driver-list-for-management" class="space-y-3 max-h-80 overflow-y-auto pr-2">
+                    <!-- Driver list will be injected here -->
+                </ul>
+                <div class="mt-6 flex justify-end">
+                    <button onclick="hideDriverManagementModal()" class="px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300">Schließen</button>
+                </div>
+            </div>
+        </div>
+
 
         <!-- Fahrer hinzufügen Sektion -->
         <div class="card">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">🧍 Fahrer hinzufügen</h2>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Fahrer verwalten</h2>
             <div class="flex flex-col sm:flex-row gap-4 items-end">
                 <div class="flex-grow">
-                     <label for="new-driver-name-input" class="block text-sm font-medium text-gray-700">Name des Fahrers (wird automatisch zur Liste hinzugefügt)</label>
+                     <label for="new-driver-name-input" class="block text-sm font-medium text-gray-700">Neuen Fahrer hinzufügen</label>
                     <input 
                         type="text" 
                         id="new-driver-name-input" 
@@ -126,12 +140,19 @@
                 >
                     Fahrer hinzufügen
                 </button>
+
+                <button 
+                    onclick="showDriverManagementModal()" 
+                    class="w-full sm:w-auto px-6 py-3 bg-gray-500 text-white font-semibold rounded-lg shadow-md hover:bg-gray-600 transition duration-150 transform hover:scale-[1.02]"
+                >
+                    Fahrerliste verwalten
+                </button>
             </div>
         </div>
 
         <!-- Schicht Anlegen Sektion (Batch-Erstellung) -->
         <div class="card">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">📅 Schicht anlegen & Fahrer zuweisen</h2>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Schicht anlegen & Fahrer zuweisen</h2>
             <p class="text-sm text-gray-500 mb-4">Fügen Sie mehrere Schichten zur Liste hinzu, bevor Sie diese gesammelt anlegen.</p>
 
             <!-- Eingabefelder -->
@@ -195,7 +216,7 @@
         
         <!-- Einsatzübersicht Sektion (Listenansicht mit Bearbeiten/Löschen) -->
         <div class="card mt-8">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">📅 Einsatzübersicht (Bearbeitbar & Löschbar)</h2>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Einsatzübersicht</h2>
 
             <div id="overview-container" class="overflow-x-auto relative">
                 <table class="min-w-full divide-y divide-gray-200">
@@ -221,7 +242,7 @@
     <!-- Lokale Speicherlogik (localStorage) -->
     <script>
         // --- KONSTANTEN & STATE ---
-        const STORAGE_KEY = 'driverPlanerDataV2'; // Neuer Schlüssel, um Konflikte mit alten Firebase-Versionen zu vermeiden
+        const STORAGE_KEY = 'driverPlanerDataV2'; // Neuer Schlüssel, um Konflikte mit alten Versionen zu vermeiden
         let data = {
             drivers: [], // Array von Namen
             shifts: []   // Array von Schicht-Objekten
@@ -246,6 +267,8 @@
         const alertConfirmBtn = document.getElementById('alert-confirm-btn');
         const alertCancelBtn = document.getElementById('alert-cancel-btn');
         const editModal = document.getElementById('edit-modal');
+        const driverManagementModal = document.getElementById('driver-management-modal');
+        const driverListForManagement = document.getElementById('driver-list-for-management');
 
 
         // --- LOCAL STORAGE HILFSFUNKTIONEN ---
@@ -309,6 +332,72 @@
 
         function hideEditModal() {
             editModal.classList.add('hidden');
+        }
+        
+        // --- FAHRER LÖSCHEN LOGIK ---
+
+        window.showDriverManagementModal = function() {
+            renderDriverManagementList();
+            driverManagementModal.classList.remove('hidden');
+        }
+        
+        window.hideDriverManagementModal = function() {
+            driverManagementModal.classList.add('hidden');
+        }
+        
+        function renderDriverManagementList() {
+            driverListForManagement.innerHTML = '';
+            
+            if (data.drivers.length === 0) {
+                driverListForManagement.innerHTML = '<li class="text-gray-500 p-3">Keine Fahrer vorhanden.</li>';
+                return;
+            }
+            
+            data.drivers.sort().forEach(driverName => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-3 bg-white border border-gray-200 rounded-lg shadow-sm';
+                li.innerHTML = `
+                    <span class="text-lg font-medium text-gray-800">${driverName}</span>
+                    <button onclick="confirmAndDeleteDriver('${driverName}')" class="px-3 py-1 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition duration-150">
+                        Löschen
+                    </button>
+                `;
+                driverListForManagement.appendChild(li);
+            });
+        }
+        
+        window.confirmAndDeleteDriver = function(driverName) {
+             const affectedShiftsCount = data.shifts.filter(s => s.driver === driverName).length;
+             
+             let message = `Sind Sie sicher, dass Sie den Fahrer <strong>${driverName}</strong> unwiderruflich löschen möchten?`;
+             
+             if (affectedShiftsCount > 0) {
+                 message += `<br><br><strong>WARNUNG:</strong> Dadurch werden auch <strong>alle ${affectedShiftsCount} zugewiesenen Schichten</strong> dieses Fahrers gelöscht.`;
+             }
+             
+             showAlert(
+                 'Fahrer löschen bestätigen',
+                 message,
+                 true, // isConfirm = true
+                 () => deleteDriverAndShifts(driverName) // onConfirm callback
+             );
+        }
+        
+        function deleteDriverAndShifts(driverName) {
+            // 1. Fahrer aus der Driver-Liste entfernen
+            data.drivers = data.drivers.filter(name => name !== driverName);
+            
+            // 2. Schichten dieses Fahrers aus der Shifts-Liste entfernen
+            const affectedShiftsCount = data.shifts.filter(s => s.driver === driverName).length;
+            data.shifts = data.shifts.filter(s => s.driver !== driverName);
+            
+            // 3. Daten speichern und UI aktualisieren
+            saveLocalData();
+            populateDriverDropdown();
+            loadAndRenderShifts();
+            renderDriverManagementList(); // Die offene Liste aktualisieren
+            
+            showAlert('Erfolg', `Fahrer <strong>${driverName}</strong> und ${affectedShiftsCount} Schicht(en) wurden gelöscht.`);
         }
 
 
@@ -503,7 +592,7 @@
             });
         }
         
-        // --- BEARBEITEN / LÖSCHEN FUNKTIONEN ---
+        // --- SCHICHT BEARBEITEN / LÖSCHEN FUNKTIONEN ---
 
         window.openEditModal = function(id, driver, date, start, end, description) {
             document.getElementById('edit-shift-id').value = id;
